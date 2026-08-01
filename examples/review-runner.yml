@@ -1,4 +1,4 @@
-name: OpenCodeReview Runner
+name: PR Agent Runner
 
 on:
   pull_request:

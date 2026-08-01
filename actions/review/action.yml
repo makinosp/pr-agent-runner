@@ -1,4 +1,4 @@
-name: "OpenCodeReview Runner"
+name: "PR Agent Runner"
 description: >
   Runs OpenCodeReview (OCR) on a pull request and posts review comments.
   Triggered on PR open or when a PR comment mentions the configured bot

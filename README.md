@@ -1,4 +1,4 @@
-# OpenCodeReview Runner
+# PR Agent Runner
 
 AI-powered PR review automation built on [OpenCodeReview (OCR)](https://open-codereview.ai/) and a small TypeScript CLI that posts reviews and answers `@mention` commands on GitHub.
 
@@ -49,7 +49,7 @@ Configure these on each target repository (or at organization level):
 Add a workflow to your repository (see [`examples/review-runner.yml`](examples/review-runner.yml)):
 
 ```yaml
-name: OpenCodeReview Runner
+name: PR Agent Runner
 
 on:
   pull_request:
