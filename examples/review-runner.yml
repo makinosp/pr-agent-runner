@@ -1,0 +1,33 @@
+name: OpenCodeReview Runner
+
+on:
+  pull_request:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: opencode-review-${{ github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: makinosp/pr-agent-runner/actions/review@v1
+        with:
+          app-client-id: ${{ vars.APP_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          ocr-llm-url: ${{ vars.OCR_LLM_URL }}
+          ocr-llm-token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
+          ocr-llm-model: ${{ vars.OCR_LLM_MODEL }}
+          ocr-llm-max-tokens: ${{ vars.OCR_LLM_MAX_TOKENS }}
+          ocr-use-anthropic: ${{ vars.OCR_LLM_USE_ANTHROPIC }}
+          ocr-llm-protocol: ${{ vars.OCR_LLM_PROTOCOL }}
+          ocr-language: ${{ vars.OCR_LANGUAGE }}
+          compose-pr: ${{ vars.COMPOSE_PR }}
+          bot-mention: ${{ vars.BOT_MENTION || '@opencode-review' }}
