@@ -61,6 +61,30 @@ inputs:
     description: "Set 'true' to compose and update the PR title and body"
     required: false
     default: "false"
+  sticky-summary:
+    description: "Update the review summary in place across runs ('true') or post a fresh review each run ('false')"
+    required: false
+    default: "true"
+  incremental:
+    description: "Skip inline comments that overlap previously-posted bot comments"
+    required: false
+    default: "false"
+  incremental-overlap-threshold:
+    description: "IoU threshold in (0, 1] used to treat multi-line comments as duplicates in incremental mode"
+    required: false
+    default: "0.6"
+  review-comment-batch-size:
+    description: "Maximum number of inline comments packed into a single createReview call"
+    required: false
+    default: "50"
+  route-severity-below:
+    description: "Route findings at or below this severity to the summary (critical|high|medium|low; empty disables)"
+    required: false
+    default: ""
+  route-categories:
+    description: "Comma-separated categories to route to the summary (empty disables)"
+    required: false
+    default: ""
   runner-ref:
     description: "Git ref of the runner repository to use for the runner CLI"
     required: false
@@ -69,6 +93,25 @@ inputs:
     description: "Repository that hosts the runner CLI (owner/name)"
     required: false
     default: "makinosp/pr-agent-runner"
+outputs:
+  comments_total:
+    description: "Total number of findings processed"
+    value: ${{ steps.review.outputs.comments_total }}
+  comments_inline:
+    description: "Number of inline comments posted"
+    value: ${{ steps.review.outputs.comments_inline }}
+  comments_skipped:
+    description: "Number of inline comments skipped as overlapping"
+    value: ${{ steps.review.outputs.comments_skipped }}
+  comments_routed:
+    description: "Number of findings routed to the summary"
+    value: ${{ steps.review.outputs.comments_routed }}
+  comments_failed:
+    description: "Number of comments that failed to post"
+    value: ${{ steps.review.outputs.comments_failed }}
+  summary_comment_url:
+    description: "URL of the review carrying the summary"
+    value: ${{ steps.review.outputs.summary_comment_url }}
 runs:
   using: "composite"
   steps:
@@ -163,6 +206,7 @@ runs:
         token: ${{ steps.app-token.outputs.token }}
 
     - name: Run review runner
+      id: review
       if: github.event_name == 'pull_request' || steps.gate.outputs.triggered == 'true'
       shell: bash
       env:
@@ -183,6 +227,12 @@ runs:
         OCR_LLM_PROTOCOL: ${{ inputs.ocr-llm-protocol }}
         OCR_LANGUAGE: ${{ inputs.ocr-language }}
         COMPOSE_PR: ${{ inputs.compose-pr }}
+        REVIEW_STICKY_SUMMARY: ${{ inputs.sticky-summary }}
+        REVIEW_INCREMENTAL: ${{ inputs.incremental }}
+        REVIEW_INCREMENTAL_OVERLAP_THRESHOLD: ${{ inputs.incremental-overlap-threshold }}
+        REVIEW_COMMENT_BATCH_SIZE: ${{ inputs.review-comment-batch-size }}
+        REVIEW_ROUTE_SEVERITY_BELOW: ${{ inputs.route-severity-below }}
+        REVIEW_ROUTE_CATEGORIES: ${{ inputs.route-categories }}
       run: |
         cd review_runner
         pnpm install

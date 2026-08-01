@@ -10,6 +10,29 @@ AI-powered PR review automation built on [OpenCodeReview (OCR)](https://open-cod
 
 The whole flow is packaged as a **reusable composite action**, so any repository can opt in with a single `uses:` step.
 
+## What makes this different
+
+**pr-agent-runner** pairs OCR's review engine with posting capabilities that match the upstream OpenCodeReview GitHub Action, then adds a conversational layer the upstream action does not have:
+
+1. **GitHub App authentication (no PAT)** — a short-lived App token is generated per run (`actions/create-github-app-token`), so no personal access token is required in the consuming repository.
+2. **`@mention` bot commands** — comment `@bot review`, `@bot fix`, or ask any question on the PR and the bot answers in the thread.
+3. **Auto-fix PRs** — `@bot fix` applies critical/high findings that carry suggestions on a `fix/<bot>-<PR#>` branch and opens a PR.
+4. **Self-hosted runner** — the `runner-ref` input pins exactly which revision of the runner CLI executes, decoupling the action's behavior from any release cycle.
+
+### Comparison with the upstream OpenCodeReview GitHub Action
+
+| Aspect | OpenCodeReview (upstream) | pr-agent-runner |
+|---|---|---|
+| Authentication | Repository `GITHUB_TOKEN` | GitHub App token (App-scoped, no PAT) |
+| Triggers | Workflow events (PR open, push, …) | PR open **plus** `@mention` comments (`review` / `fix` / chat) |
+| Posting | Sticky summary, batch `createReview`, routing, idempotency tags + retries | Same core posting (sticky summary, batching, routing, incremental dedup); no idempotency/retry layer |
+| Incremental dedup | IoU overlap vs. previously-posted bot comments (matched by login) | IoU overlap vs. previously-posted **Bot-type** comments |
+| Bot commands | — | `@bot review` / `@bot fix` / chat |
+| Auto-fix | — | `@bot fix` opens a fix PR |
+| PR composition | — | Optional PR title/body rewrite (`compose-pr`) |
+| Outputs | `comments_total` / `comments_inline` / `comments_skipped` / `comments_routed` / `comments_failed` / `summary_comment_url` | Same set |
+| Fork security | Checks out the base branch and fetches the PR head as git objects (fork-safe) | `@mention` flow checks out the PR head directly (App must be installed on the fork) |
+
 ## Requirements
 
 ### 1. GitHub App
@@ -114,6 +137,12 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 | `ocr-language` | — | `English` | Review language |
 | `bot-mention` | — | `@opencode-review` | Mention trigger for comments |
 | `compose-pr` | — | `false` | `"true"` to compose/update PR title and body |
+| `sticky-summary` | — | `true` | Update the summary review body in place across runs |
+| `incremental` | — | `false` | Skip inline comments overlapping previously-posted bot comments |
+| `incremental-overlap-threshold` | — | `0.6` | IoU threshold in `(0, 1]` for multi-line duplicate detection |
+| `review-comment-batch-size` | — | `50` | Max inline comments per `createReview` call |
+| `route-severity-below` | — | *(unset)* | Route findings at-or-below this severity to the summary |
+| `route-categories` | — | *(unset)* | Comma-separated categories routed to the summary |
 | `ocr-version` | — | `1.7.16` | OCR CLI version |
 | `runner-repository` | — | `makinosp/pr-agent-runner` | Repo hosting the runner CLI |
 | `runner-ref` | — | `main` | Ref of the runner repo used for the CLI |
@@ -121,9 +150,31 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 | `pnpm-version` | — | `11` | pnpm version |
 | `fetch-depth` | — | `0` | Consumer repo checkout depth |
 
+## Review posting behavior
+
+Findings are split into **inline comments** (RIGHT-side findings whose line range falls in the diff) and a **summary** (everything else, rendered into the review body). Posting is controlled by these inputs:
+
+- **`sticky-summary`** — the review carrying the summary is located by its marker (`<!-- ocr-review-summary -->`) and its body is **updated in place** on subsequent runs instead of posting a fresh summary review. Inline comments always go to fresh reviews, because GitHub does not allow adding comments to an existing review. On the first run, body + comments are posted in a single review.
+- **`incremental`** — skips inline comments that overlap comments the bot already posted: the same single line, or multi-line ranges whose intersection-over-union exceeds `incremental-overlap-threshold`. Only comments from **Bot-type** users count as history (this is what GitHub App tokens post as); single-line vs. multi-line spans are never considered duplicates.
+- **`review-comment-batch-size`** — maximum number of inline comments packed into one `createReview` call. Larger reviews are split deterministically (path → start line → end line → original order), so reruns produce identical batches and the summary travels on the first batch.
+- **`route-severity-below` / `route-categories`** — route findings to the summary instead of inline: findings whose severity is at-or-below the configured severity (e.g. `low` routes `medium` and `low`) or whose category matches the comma-separated list. Routing is fail-open: unknown/empty values disable it and a finding is never dropped.
+
+## Action outputs
+
+| Output | Description |
+|---|---|
+| `comments_total` | Total findings processed |
+| `comments_inline` | Inline comments posted |
+| `comments_skipped` | Inline comments skipped as overlapping |
+| `comments_routed` | Findings routed to the summary |
+| `comments_failed` | Comments that failed to post |
+| `summary_comment_url` | URL of the review carrying the summary |
+
 ## Limitations
 
 - The workflow triggers only on PR **`opened`** (not on new commits pushed later) and on created comments.
+- **Sticky summaries live in the review body**, not a pinned issue comment: when new inline comments arrive, a fresh review is posted alongside and the summary review is updated — the timeline therefore keeps multiple reviews, and the summary is not pinned at the top of the conversation.
+- **Incremental dedup is Bot-type based**: comments posted by a non-Bot user are never treated as duplicates, regardless of content.
 - `@bot` commands on fork PRs require the GitHub App to be installed on the fork.
 - The `runner-ref` input pins which version of the runner CLI is used; pin to a release tag for stability.
 

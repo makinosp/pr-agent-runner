@@ -4,7 +4,7 @@ import { execFile } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
-import { info, setFailed } from '@actions/core';
+import { info, setFailed, setOutput } from '@actions/core';
 import { Octokit } from '@octokit/rest';
 import { answerChat, postChatReply } from './chat/chat.ts';
 import { applyFixes, extractFixTargets } from './chat/fix.ts';
@@ -12,7 +12,7 @@ import { resolveLlmConfig } from './chat/llm.ts';
 import { fetchPrContext, parseMention, type PrContext } from './chat/mention.ts';
 import { composePrTitleBody } from './chat/pr-compose.ts';
 import { loadFindings } from './input/loader.ts';
-import { postReview } from './output/github-review.ts';
+import { postReview, type ReviewOptions } from './output/github-review.ts';
 
 const execFileAsync = promisify(execFile);
 
@@ -26,6 +26,12 @@ interface ReviewCliConfig {
   readonly composePr: boolean;
   readonly baseRef?: string;
   readonly headSha?: string;
+  readonly stickySummary: boolean;
+  readonly incremental: boolean;
+  readonly incrementalOverlapThreshold: string;
+  readonly batchSize: string;
+  readonly routeSeverityBelow: string;
+  readonly routeCategories: string;
 }
 
 interface ChatCliConfig {
@@ -54,6 +60,17 @@ const parsePrNumber = (env: NodeJS.ProcessEnv): number => {
   return prNumber;
 };
 
+/** Parse review posting options from the environment. Optional fields stay
+ * raw so `postReview` resolves its own defaults. */
+const parseReviewOptions = (env: NodeJS.ProcessEnv): ReviewOptions => ({
+  sticky: env.REVIEW_STICKY_SUMMARY !== 'false',
+  incremental: env.REVIEW_INCREMENTAL === 'true',
+  incrementalOverlapThreshold: env.REVIEW_INCREMENTAL_OVERLAP_THRESHOLD,
+  batchSize: env.REVIEW_COMMENT_BATCH_SIZE,
+  routeSeverityBelow: env.REVIEW_ROUTE_SEVERITY_BELOW ?? '',
+  routeCategories: env.REVIEW_ROUTE_CATEGORIES ?? '',
+});
+
 export const parseConfig = (env: NodeJS.ProcessEnv): CliConfig => {
   const token = env.GITHUB_TOKEN;
   if (!token) throw new Error('GITHUB_TOKEN is required');
@@ -79,6 +96,7 @@ export const parseConfig = (env: NodeJS.ProcessEnv): CliConfig => {
     };
   }
 
+  const options = parseReviewOptions(env);
   return {
     mode: 'review',
     token,
@@ -89,6 +107,12 @@ export const parseConfig = (env: NodeJS.ProcessEnv): CliConfig => {
     composePr: env.COMPOSE_PR === 'true',
     baseRef: env.BASE_REF,
     headSha: env.HEAD_SHA,
+    stickySummary: options.sticky ?? true,
+    incremental: options.incremental ?? false,
+    incrementalOverlapThreshold: String(options.incrementalOverlapThreshold ?? ''),
+    batchSize: String(options.batchSize ?? ''),
+    routeSeverityBelow: options.routeSeverityBelow ?? '',
+    routeCategories: options.routeCategories ?? '',
   };
 };
 
@@ -134,7 +158,26 @@ const runReview = async (config: ReviewCliConfig): Promise<void> => {
       return;
     }
 
-    await postReview(octokit, { owner: config.owner, repo: config.repo }, config.prNumber, findings);
+    const stats = await postReview(
+      octokit,
+      { owner: config.owner, repo: config.repo },
+      config.prNumber,
+      findings,
+      {
+        sticky: config.stickySummary,
+        incremental: config.incremental,
+        incrementalOverlapThreshold: config.incrementalOverlapThreshold,
+        batchSize: config.batchSize,
+        routeSeverityBelow: config.routeSeverityBelow,
+        routeCategories: config.routeCategories,
+      },
+    );
+    setOutput('comments_total', String(stats.total));
+    setOutput('comments_inline', String(stats.inline));
+    setOutput('comments_skipped', String(stats.skipped));
+    setOutput('comments_routed', String(stats.routed));
+    setOutput('comments_failed', String(stats.failed));
+    setOutput('summary_comment_url', stats.summaryUrl ?? '');
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     setFailed(`Review failed for PR #${config.prNumber}: ${msg}`);
@@ -196,7 +239,7 @@ const runMention = async (config: ChatCliConfig): Promise<void> => {
   if (payload.mode === 'review') {
     info('Mention requested review re-run');
     const { findings } = await runOcrForPr(octokit, repo, config.prNumber);
-    await postReview(octokit, repo, config.prNumber, findings);
+    await postReview(octokit, repo, config.prNumber, findings, parseReviewOptions(process.env));
     info('Review re-run done');
     return;
   }

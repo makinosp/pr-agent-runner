@@ -16,6 +16,9 @@ export type FakeOctokitRest = {
     createReview: (params: Record<string, unknown>) => Promise<{ data: unknown }>;
     create: (params: Record<string, unknown>) => Promise<{ data: { html_url: string } }>;
     listFiles: (params: Record<string, unknown>) => Promise<{ data: OctokitFile[]; headers: { link: string } }>;
+    listReviews: (params: Record<string, unknown>) => Promise<{ data: Array<Record<string, unknown>> }>;
+    updateReview: (params: Record<string, unknown>) => Promise<{ data: { html_url?: string } }>;
+    listReviewComments: (params: Record<string, unknown>) => Promise<{ data: Array<Record<string, unknown>> }>;
   };
   issues: {
     createComment: (params: Record<string, unknown>) => Promise<{ data: unknown }>;
@@ -43,6 +46,7 @@ export interface OctokitCaptures {
   gitRefs: Array<Record<string, unknown>>;
   fileUpdates: Array<{ path: string; content: string }>;
   fileReads: Array<{ path: string }>;
+  reviewUpdates: Array<Record<string, unknown>>;
 }
 
 export const createCaptures = (): OctokitCaptures => ({
@@ -53,6 +57,7 @@ export const createCaptures = (): OctokitCaptures => ({
   gitRefs: [],
   fileUpdates: [],
   fileReads: [],
+  reviewUpdates: [],
 });
 
 export const makeFakeOctokit = (
@@ -74,6 +79,12 @@ export const makeFakeOctokit = (
         captures.prCreates.push(params);
         return { data: { html_url: 'https://github.com/test/pr/1' } };
       },
+      listReviews: async () => ({ data: [] }),
+      updateReview: async (params) => {
+        captures.reviewUpdates.push(params);
+        return { data: { html_url: 'https://github.com/test/reviews/1' } };
+      },
+      listReviewComments: async () => ({ data: [] }),
       listFiles: async () => ({
         data: files.map((f) => ({
           sha: '',

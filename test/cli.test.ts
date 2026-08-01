@@ -115,3 +115,41 @@ test('parseConfig defaults BOT_MENTION to @opencode-review', () => {
   if (config.mode !== 'review-on-mention') throw new Error('expected mention mode');
   assert.equal(config.botMention, '@opencode-review');
 });
+
+test('parseConfig defaults the review posting options', () => {
+  const config = parseConfig({
+    GITHUB_TOKEN: 'tok',
+    GITHUB_REPOSITORY: 'owner/repo',
+    PR_NUMBER: '42',
+  });
+  assert.equal(config.mode, 'review');
+  if (config.mode !== 'review') return;
+  assert.equal(config.stickySummary, true);
+  assert.equal(config.incremental, false);
+  assert.equal(config.incrementalOverlapThreshold, '');
+  assert.equal(config.batchSize, '');
+  assert.equal(config.routeSeverityBelow, '');
+  assert.equal(config.routeCategories, '');
+});
+
+test('parseConfig reads the review posting options from env', () => {
+  const config = parseConfig({
+    GITHUB_TOKEN: 'tok',
+    GITHUB_REPOSITORY: 'owner/repo',
+    PR_NUMBER: '42',
+    REVIEW_STICKY_SUMMARY: 'false',
+    REVIEW_INCREMENTAL: 'true',
+    REVIEW_INCREMENTAL_OVERLAP_THRESHOLD: '0.3',
+    REVIEW_COMMENT_BATCH_SIZE: '10',
+    REVIEW_ROUTE_SEVERITY_BELOW: 'low',
+    REVIEW_ROUTE_CATEGORIES: 'style, documentation',
+  });
+  assert.equal(config.mode, 'review');
+  if (config.mode !== 'review') return;
+  assert.equal(config.stickySummary, false);
+  assert.equal(config.incremental, true);
+  assert.equal(config.incrementalOverlapThreshold, '0.3');
+  assert.equal(config.batchSize, '10');
+  assert.equal(config.routeSeverityBelow, 'low');
+  assert.equal(config.routeCategories, 'style, documentation');
+});
