@@ -15,7 +15,6 @@ export type FakeOctokitRest = {
     update: (params: Record<string, unknown>) => Promise<{ data: unknown }>;
     createReview: (params: Record<string, unknown>) => Promise<{ data: unknown }>;
     create: (params: Record<string, unknown>) => Promise<{ data: { html_url: string } }>;
-    createPullRequest?: (params: Record<string, unknown>) => Promise<{ data: { html_url: string } }>;
     listFiles: (params: Record<string, unknown>) => Promise<{ data: OctokitFile[]; headers: { link: string } }>;
   };
   issues: {
@@ -27,7 +26,6 @@ export type FakeOctokitRest = {
   repos: {
     /** Subset of `repos.getContent` file response — only `content` and `encoding`. */
     getContent: (params: Record<string, unknown>) => Promise<{ data: { content?: string; encoding?: string } }>;
-    getCommit: (params: Record<string, unknown>) => Promise<{ data: { sha: string } }>;
     createOrUpdateFileContents: (params: Record<string, unknown>) => Promise<{ data: unknown }>;
   };
 };
@@ -76,10 +74,6 @@ export const makeFakeOctokit = (
         captures.prCreates.push(params);
         return { data: { html_url: 'https://github.com/test/pr/1' } };
       },
-      createPullRequest: async (params) => {
-        captures.prCreates.push(params);
-        return { data: { html_url: 'https://github.com/test/pr/1' } };
-      },
       listFiles: async () => ({
         data: files.map((f) => ({
           sha: '',
@@ -115,7 +109,6 @@ export const makeFakeOctokit = (
           data: { content: Buffer.from('line1\nline2\nline3\nline4\nline5').toString('base64'), encoding: 'base64' },
         };
       },
-      getCommit: async () => ({ data: { sha: 'base-sha' } }),
       createOrUpdateFileContents: async (params) => {
         captures.fileUpdates.push({ path: params.path as string, content: params.content as string });
         return { data: {} };

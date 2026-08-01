@@ -1,4 +1,5 @@
 import type { RepoRef } from './schemas/common.ts';
+import type { Finding } from './schemas/finding.ts';
 import { execFile } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -8,7 +9,7 @@ import { Octokit } from '@octokit/rest';
 import { answerChat, postChatReply } from './chat/chat.ts';
 import { applyFixes, extractFixTargets } from './chat/fix.ts';
 import { resolveLlmConfig } from './chat/llm.ts';
-import { fetchPrContext, parseMention } from './chat/mention.ts';
+import { fetchPrContext, parseMention, type PrContext } from './chat/mention.ts';
 import { composePrTitleBody } from './chat/pr-compose.ts';
 import { loadFindings } from './input/loader.ts';
 import { postReview } from './output/github-review.ts';
@@ -165,6 +166,21 @@ const runOcrReview = async (refs: { readonly baseRef: string; readonly headSha: 
   return resultPath;
 };
 
+interface OcrPrResult {
+  readonly pr: PrContext;
+  readonly findings: readonly Finding[];
+}
+
+/**
+ * Run OCR against the PR diff and load the resulting findings.
+ * Shared by the review re-run and auto-fix mention flows.
+ */
+const runOcrForPr = async (octokit: Octokit, repo: RepoRef, prNumber: number): Promise<OcrPrResult> => {
+  const pr = await fetchPrContext(octokit, repo, prNumber);
+  const resultPath = await runOcrReview({ baseRef: pr.baseRef, headSha: pr.headSha });
+  return { pr, findings: await loadFindings(resultPath) };
+};
+
 const runMention = async (config: ChatCliConfig): Promise<void> => {
   const payload = parseMention(config.commentBody, config.botMention);
   if (payload === null) {
@@ -177,9 +193,7 @@ const runMention = async (config: ChatCliConfig): Promise<void> => {
 
   if (payload.mode === 'review') {
     info('Mention requested review re-run');
-    const pr = await fetchPrContext(octokit, repo, config.prNumber);
-    const resultPath = await runOcrReview({ baseRef: pr.baseRef, headSha: pr.headSha });
-    const findings = await loadFindings(resultPath);
+    const { findings } = await runOcrForPr(octokit, repo, config.prNumber);
     await postReview(octokit, repo, config.prNumber, findings);
     info('Review re-run done');
     return;
@@ -187,9 +201,7 @@ const runMention = async (config: ChatCliConfig): Promise<void> => {
 
   if (payload.mode === 'fix') {
     info('Mention requested auto-fix');
-    const pr = await fetchPrContext(octokit, repo, config.prNumber);
-    const resultPath = await runOcrReview({ baseRef: pr.baseRef, headSha: pr.headSha });
-    const findings = await loadFindings(resultPath);
+    const { pr, findings } = await runOcrForPr(octokit, repo, config.prNumber);
     const targets = extractFixTargets(findings);
     info(`Extracted ${targets.length} fixable targets (critical/high with suggestion)`);
     const result = await applyFixes(octokit, repo, config.prNumber, targets, pr.headSha, pr.baseRef, config.botMention);

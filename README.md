@@ -44,6 +44,10 @@ Configure these on each target repository (or at organization level):
 | Variable | `COMPOSE_PR` | *(optional)* `"true"` to compose/update the PR title and body |
 | Variable | `BOT_MENTION` | *(optional)* Bot mention trigger, e.g. `@my-bot` (default: `@opencode-review`) |
 
+### 3. Node.js 24+ (required)
+
+The runner CLI is executed **directly from TypeScript source** using Node's native [type stripping](https://nodejs.org/api/typescript.html) — there is no build step. This requires **Node.js 24 or newer** (the `node-version` input defaults to `24`). Using an older Node.js (e.g. 20 or 22) will fail at runtime.
+
 ## Usage
 
 Add a workflow to your repository (see [`examples/review-runner.yml`](examples/review-runner.yml)):
@@ -113,7 +117,7 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 | `ocr-version` | — | `1.7.16` | OCR CLI version |
 | `runner-repository` | — | `makinosp/pr-agent-runner` | Repo hosting the runner CLI |
 | `runner-ref` | — | `main` | Ref of the runner repo used for the CLI |
-| `node-version` | — | `24` | Node.js version |
+| `node-version` | — | `24` | Node.js version (**must be ≥ 24** — the CLI runs TS directly via type stripping) |
 | `pnpm-version` | — | `11` | pnpm version |
 | `fetch-depth` | — | `0` | Consumer repo checkout depth |
 
