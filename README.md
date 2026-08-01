@@ -122,3 +122,7 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 - The workflow triggers only on PR **`opened`** (not on new commits pushed later) and on created comments.
 - `@bot` commands on fork PRs require the GitHub App to be installed on the fork.
 - The `runner-ref` input pins which version of the runner CLI is used; pin to a release tag for stability.
+
+## License
+
+This project is licensed under the [BSD 3-Clause License](LICENSE).
