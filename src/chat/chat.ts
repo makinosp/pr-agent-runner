@@ -49,6 +49,7 @@ export const postChatReply = async (
   prNumber: number,
   answer: string,
   botMention = '@opencode-review',
+  commentId?: number,
 ): Promise<void> => {
   const language = process.env.OCR_LANGUAGE;
   const label = language ? `${botMention} (${language})` : botMention;
@@ -57,5 +58,6 @@ export const postChatReply = async (
     ...repo,
     issue_number: prNumber,
     body,
+    ...(commentId !== undefined ? { in_reply_to: commentId } : {}),
   });
 };

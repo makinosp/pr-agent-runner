@@ -42,6 +42,20 @@ test('postChatReply uses botMention parameter in label', async () => {
   assert.match(captures.comments[0]?.body as string, /@custom-bot reply:/);
 });
 
+test('postChatReply replies in thread when commentId is provided', async () => {
+  const captures = createCaptures();
+  const octokit = makeFakeOctokit([], captures);
+  await postChatReply(octokit as never, { owner: 'o', repo: 'r' }, 1, 'reply', '@custom-bot', 12345);
+  assert.equal(captures.comments[0]?.in_reply_to, 12345);
+});
+
+test('postChatReply omits in_reply_to when commentId is not provided', async () => {
+  const captures = createCaptures();
+  const octokit = makeFakeOctokit([], captures);
+  await postChatReply(octokit as never, { owner: 'o', repo: 'r' }, 1, 'reply');
+  assert.equal(captures.comments[0]?.in_reply_to, undefined);
+});
+
 // --- answerChat tests ---
 
 test('answerChat sends messages and returns the LLM response', async () => {

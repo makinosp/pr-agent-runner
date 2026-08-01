@@ -61,6 +61,7 @@ test('parseConfig switches to review-on-mention mode when COMMENT_ID is present'
   });
   assert.equal(config.mode, 'review-on-mention');
   if (config.mode !== 'review-on-mention') return;
+  assert.equal(config.commentId, 12345);
   assert.equal(config.commentBody, '@bg-onigiri review');
   assert.equal(config.botMention, '@bg-onigiri');
 });

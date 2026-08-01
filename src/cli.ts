@@ -34,6 +34,7 @@ interface ChatCliConfig {
   readonly owner: string;
   readonly repo: string;
   readonly prNumber: number;
+  readonly commentId: number;
   readonly commentBody: string;
   readonly commentUser: string;
   readonly botMention: string;
@@ -71,6 +72,7 @@ export const parseConfig = (env: NodeJS.ProcessEnv): CliConfig => {
       owner,
       repo,
       prNumber,
+      commentId,
       commentBody,
       commentUser,
       botMention,
@@ -212,6 +214,7 @@ const runMention = async (config: ChatCliConfig): Promise<void> => {
         config.prNumber,
         `Created fix PR: ${result.prUrl}\n\nFiles modified: ${result.changedFiles}`,
         config.botMention,
+        config.commentId,
       );
     } else {
       await postChatReply(
@@ -220,6 +223,7 @@ const runMention = async (config: ChatCliConfig): Promise<void> => {
         config.prNumber,
         'No fixable findings (critical/high with suggestions) were found.',
         config.botMention,
+        config.commentId,
       );
     }
     info('Auto-fix done');
@@ -230,7 +234,7 @@ const runMention = async (config: ChatCliConfig): Promise<void> => {
   const llmConfig = resolveLlmConfig(process.env);
   const pr = await fetchPrContext(octokit, repo, config.prNumber);
   const answer = await answerChat(octokit, llmConfig, repo, pr, payload.question);
-  await postChatReply(octokit, repo, config.prNumber, answer, config.botMention);
+  await postChatReply(octokit, repo, config.prNumber, answer, config.botMention, config.commentId);
   info('Chat reply posted');
 };
 
