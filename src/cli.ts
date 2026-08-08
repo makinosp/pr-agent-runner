@@ -1,10 +1,10 @@
 import type { RepoRef } from './schemas/common.ts';
 import type { Finding } from './schemas/finding.ts';
 import { execFile } from 'node:child_process';
-import { writeFile } from 'node:fs/promises';
+import { writeFile as fsWriteFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
-import { info, setFailed, setOutput } from '@actions/core';
+import { info as coreInfo, setFailed, setOutput as coreSetOutput } from '@actions/core';
 import { Octokit } from '@octokit/rest';
 import { answerChat, postChatReply } from './chat/chat.ts';
 import { applyFixes, extractFixTargets } from './chat/fix.ts';
@@ -15,6 +15,29 @@ import { loadFindings } from './input/loader.ts';
 import { postReview, type ReviewOptions } from './output/github-review.ts';
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Test seams for the CLI entry points. All fields default to the real
+ * implementations so production behaviour is unchanged.
+ */
+export interface CliDeps {
+  /** Override Octokit construction (defaults to real Octokit). */
+  octokitFactory?: (token: string) => Octokit;
+  /** Override execFile (defaults to promisified node:child_process.execFile). */
+  execFile?: (
+    file: string,
+    args: readonly string[],
+    options?: Record<string, unknown>,
+  ) => Promise<{ stdout: string; stderr: string }>;
+  /** Override writeFile (defaults to node:fs/promises.writeFile). */
+  writeFile?: (path: string, data: string, encoding: 'utf8') => Promise<void>;
+  /** Override @actions/core.info (defaults to the real one). */
+  info?: (message: string) => void;
+  /** Override @actions/core.setOutput (defaults to the real one). */
+  setOutput?: (name: string, value: string) => void;
+  /** Override @actions/core.setFailed (defaults to the real one). */
+  setFailed?: (message: string) => void;
+}
 
 interface ReviewCliConfig {
   readonly mode: 'review';
@@ -116,8 +139,10 @@ export const parseConfig = (env: NodeJS.ProcessEnv): CliConfig => {
   };
 };
 
-const runReview = async (config: ReviewCliConfig): Promise<void> => {
-  const octokit = new Octokit({ auth: config.token });
+export const runReview = async (config: ReviewCliConfig, deps: CliDeps = {}): Promise<void> => {
+  const { info = coreInfo, setOutput = coreSetOutput } = deps;
+  const octokitFactory = deps.octokitFactory ?? ((token: string): Octokit => new Octokit({ auth: token }));
+  const octokit = octokitFactory(config.token);
 
   try {
     let resultPath = config.resultPath;
@@ -125,7 +150,7 @@ const runReview = async (config: ReviewCliConfig): Promise<void> => {
     // action has a single entry point. Otherwise fall back to a pre-generated
     // result file (standalone usage).
     if (config.baseRef && config.headSha) {
-      resultPath = await runOcrReview({ baseRef: config.baseRef, headSha: config.headSha });
+      resultPath = await runOcrReview({ baseRef: config.baseRef, headSha: config.headSha }, deps);
     }
 
     if (config.composePr) {
@@ -180,12 +205,18 @@ const runReview = async (config: ReviewCliConfig): Promise<void> => {
     setOutput('summary_comment_url', stats.summaryUrl ?? '');
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
-    setFailed(`Review failed for PR #${config.prNumber}: ${msg}`);
-    process.exit(1);
+    throw new Error(`Review failed for PR #${config.prNumber}: ${msg}`);
   }
 };
 
-const runOcrReview = async (refs: { readonly baseRef: string; readonly headSha: string }): Promise<string> => {
+export const runOcrReview = async (
+  refs: { readonly baseRef: string; readonly headSha: string },
+  deps: CliDeps = {},
+): Promise<string> => {
+  const {
+    execFile = execFileAsync as NonNullable<CliDeps['execFile']>,
+    writeFile = fsWriteFile as NonNullable<CliDeps['writeFile']>,
+  } = deps;
   const env: Record<string, string | undefined> = {
     OCR_LLM_URL: process.env.OCR_LLM_URL,
     OCR_LLM_TOKEN: process.env.OCR_LLM_TOKEN,
@@ -195,14 +226,14 @@ const runOcrReview = async (refs: { readonly baseRef: string; readonly headSha: 
   };
   const { baseRef, headSha } = refs;
 
-  await execFileAsync('ocr', ['llm', 'test'], { env: { ...process.env, ...env } });
-  await execFileAsync('ocr', ['config', 'set', 'language', process.env.OCR_LANGUAGE ?? 'English'], {
+  await execFile('ocr', ['llm', 'test'], { env: { ...process.env, ...env } });
+  await execFile('ocr', ['config', 'set', 'language', process.env.OCR_LANGUAGE ?? 'English'], {
     env: { ...process.env, ...env },
   });
-  await execFileAsync('git', ['fetch', 'origin', baseRef]);
-  const { stdout: mergeBase } = await execFileAsync('git', ['merge-base', `origin/${baseRef}`, headSha]);
+  await execFile('git', ['fetch', 'origin', baseRef]);
+  const { stdout: mergeBase } = await execFile('git', ['merge-base', `origin/${baseRef}`, headSha]);
   const resultPath = 'result.json';
-  const { stdout } = await execFileAsync(
+  const { stdout } = await execFile(
     'ocr',
     ['review', '--from', mergeBase.trim(), '--to', headSha, '--format', 'json', '--audience', 'agent'],
     { env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 },
@@ -220,25 +251,32 @@ interface OcrPrResult {
  * Run OCR against the PR diff and load the resulting findings.
  * Shared by the review re-run and auto-fix mention flows.
  */
-const runOcrForPr = async (octokit: Octokit, repo: RepoRef, prNumber: number): Promise<OcrPrResult> => {
+const runOcrForPr = async (
+  octokit: Octokit,
+  repo: RepoRef,
+  prNumber: number,
+  deps: CliDeps = {},
+): Promise<OcrPrResult> => {
   const pr = await fetchPrContext(octokit, repo, prNumber);
-  const resultPath = await runOcrReview({ baseRef: pr.baseRef, headSha: pr.headSha });
+  const resultPath = await runOcrReview({ baseRef: pr.baseRef, headSha: pr.headSha }, deps);
   return { pr, findings: await loadFindings(resultPath) };
 };
 
-const runMention = async (config: ChatCliConfig): Promise<void> => {
+export const runMention = async (config: ChatCliConfig, deps: CliDeps = {}): Promise<void> => {
+  const { info = coreInfo } = deps;
   const payload = parseMention(config.commentBody, config.botMention);
   if (payload === null) {
     info('No mention found. Skipping.');
     return;
   }
 
-  const octokit = new Octokit({ auth: config.token });
+  const octokitFactory = deps.octokitFactory ?? ((token: string): Octokit => new Octokit({ auth: token }));
+  const octokit = octokitFactory(config.token);
   const repo = { owner: config.owner, repo: config.repo };
 
   if (payload.mode === 'review') {
     info('Mention requested review re-run');
-    const { findings } = await runOcrForPr(octokit, repo, config.prNumber);
+    const { findings } = await runOcrForPr(octokit, repo, config.prNumber, deps);
     await postReview(octokit, repo, config.prNumber, findings, parseReviewOptions(process.env));
     info('Review re-run done');
     return;
@@ -246,7 +284,7 @@ const runMention = async (config: ChatCliConfig): Promise<void> => {
 
   if (payload.mode === 'fix') {
     info('Mention requested auto-fix');
-    const { pr, findings } = await runOcrForPr(octokit, repo, config.prNumber);
+    const { pr, findings } = await runOcrForPr(octokit, repo, config.prNumber, deps);
     const targets = extractFixTargets(findings);
     info(`Extracted ${targets.length} fixable targets (critical/high with suggestion)`);
     const result = await applyFixes(octokit, repo, config.prNumber, targets, pr.headSha, pr.baseRef, config.botMention);
@@ -281,12 +319,12 @@ const runMention = async (config: ChatCliConfig): Promise<void> => {
   info('Chat reply posted');
 };
 
-const run = async (config: CliConfig): Promise<void> => {
+const run = async (config: CliConfig, deps: CliDeps = {}): Promise<void> => {
   if (config.mode === 'review') {
-    await runReview(config);
+    await runReview(config, deps);
     return;
   }
-  await runMention(config);
+  await runMention(config, deps);
 };
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -294,5 +332,6 @@ if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     .then(() => run(parseConfig(process.env)))
     .catch((error) => {
       setFailed(error instanceof Error ? error.message : String(error));
+      process.exit(1);
     });
 }

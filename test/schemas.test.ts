@@ -1,131 +1,151 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import { expect } from 'expect';
+import { describe, test } from 'node:test';
 import { categorySchema, severitySchema } from '../src/schemas/common.ts';
 import { findingsContainerSchema } from '../src/schemas/container.ts';
 import { findingSchema, findingSchemaStrict } from '../src/schemas/finding.ts';
+import { parseOk } from './helpers/parse-ok.ts';
 
-test('severitySchema lowercases and trims, falling back to medium', () => {
-  assert.equal(severitySchema.parse('CRITICAL'), 'critical');
-  assert.equal(severitySchema.parse('  high '), 'high');
-  assert.equal(severitySchema.parse('nonsense'), 'medium');
-});
-
-test('severitySchema defaults missing values to medium', () => {
-  assert.equal(severitySchema.parse(undefined), 'medium');
-  assert.equal(severitySchema.parse(null), 'medium');
-  assert.equal(severitySchema.parse(123), 'medium');
-});
-
-test('categorySchema lowercases and trims, falling back to other', () => {
-  assert.equal(categorySchema.parse('BUG'), 'bug');
-  assert.equal(categorySchema.parse('  Security '), 'security');
-  assert.equal(categorySchema.parse('weird'), 'other');
-});
-
-test('categorySchema defaults missing values to other', () => {
-  assert.equal(categorySchema.parse(undefined), 'other');
-  assert.equal(categorySchema.parse(null), 'other');
-  assert.equal(categorySchema.parse(0), 'other');
-});
-
-test('findingSchemaStrict defaults side to RIGHT', () => {
-  const result = findingSchemaStrict.safeParse({
-    path: 'a.ts',
-    content: 'x',
-    category: 'bug',
-    severity: 'high',
-    start_line: 1,
+describe('severitySchema', () => {
+  test('lowercases and trims, falling back to medium', () => {
+    expect(severitySchema.parse('CRITICAL')).toBe('critical');
+    expect(severitySchema.parse('  high ')).toBe('high');
+    expect(severitySchema.parse('nonsense')).toBe('medium');
   });
-  assert.ok(result.success);
-  assert.equal(result.data.side, 'RIGHT');
-});
 
-test('findingSchemaStrict clears end_line when smaller than start_line', () => {
-  const result = findingSchemaStrict.safeParse({
-    path: 'a.ts',
-    content: 'x',
-    category: 'bug',
-    severity: 'high',
-    side: 'RIGHT',
-    start_line: 5,
-    end_line: 2,
+  test('defaults missing values to medium', () => {
+    expect(severitySchema.parse(undefined)).toBe('medium');
+    expect(severitySchema.parse(null)).toBe('medium');
+    expect(severitySchema.parse(123)).toBe('medium');
   });
-  assert.ok(result.success);
-  assert.equal(result.data.end_line, undefined);
 });
 
-test('findingSchemaStrict allows RIGHT side without start_line (returns undefined)', () => {
-  const result = findingSchemaStrict.safeParse({
-    path: 'a.ts',
-    content: 'x',
-    category: 'bug',
-    severity: 'high',
-    side: 'RIGHT',
+describe('categorySchema', () => {
+  test('lowercases and trims, falling back to other', () => {
+    expect(categorySchema.parse('BUG')).toBe('bug');
+    expect(categorySchema.parse('  Security ')).toBe('security');
+    expect(categorySchema.parse('weird')).toBe('other');
   });
-  assert.ok(result.success);
-  assert.equal(result.data?.start_line, undefined);
-});
 
-test('findingSchemaStrict drops start_line for LEFT side', () => {
-  const result = findingSchemaStrict.safeParse({
-    path: 'a.ts',
-    content: 'x',
-    category: 'bug',
-    severity: 'high',
-    side: 'LEFT',
-    start_line: 1,
+  test('defaults missing values to other', () => {
+    expect(categorySchema.parse(undefined)).toBe('other');
+    expect(categorySchema.parse(null)).toBe('other');
+    expect(categorySchema.parse(0)).toBe('other');
   });
-  assert.ok(result.success);
-  assert.equal(result.data.start_line, undefined);
 });
 
-test('findingSchemaStrict coerces numeric string line numbers', () => {
-  const result = findingSchemaStrict.safeParse({
-    path: 'a.ts',
-    content: 'x',
-    category: 'bug',
-    severity: 'high',
-    side: 'RIGHT',
-    start_line: '3',
+describe('findingSchemaStrict', () => {
+  test('defaults side to RIGHT', () => {
+    const data = parseOk(
+      findingSchemaStrict.safeParse({
+        path: 'a.ts',
+        content: 'x',
+        category: 'bug',
+        severity: 'high',
+        start_line: 1,
+      }),
+    );
+    expect(data.side).toBe('RIGHT');
   });
-  assert.ok(result.success);
-  assert.equal(result.data.start_line, 3);
-});
 
-test('findingSchema defaults severity to medium when missing', () => {
-  const result = findingSchema.safeParse({
-    path: 'a.ts',
-    content: 'x',
-    category: 'bug',
-    side: 'RIGHT',
-    start_line: 1,
+  test('clears end_line when smaller than start_line', () => {
+    const data = parseOk(
+      findingSchemaStrict.safeParse({
+        path: 'a.ts',
+        content: 'x',
+        category: 'bug',
+        severity: 'high',
+        side: 'RIGHT',
+        start_line: 5,
+        end_line: 2,
+      }),
+    );
+    expect(data.end_line).toBeUndefined();
   });
-  assert.ok(result.success);
-  assert.equal(result.data?.severity, 'medium');
-});
 
-test('findingSchema returns null for RIGHT side without start_line', () => {
-  const result = findingSchema.safeParse({
-    path: 'a.ts',
-    content: 'x',
-    category: 'bug',
-    severity: 'high',
-    side: 'RIGHT',
+  test('allows RIGHT side without start_line (returns undefined)', () => {
+    const data = parseOk(
+      findingSchemaStrict.safeParse({
+        path: 'a.ts',
+        content: 'x',
+        category: 'bug',
+        severity: 'high',
+        side: 'RIGHT',
+      }),
+    );
+    expect(data.start_line).toBeUndefined();
   });
-  assert.ok(result.success);
-  assert.equal(result.data, null);
-});
 
-test('findingsContainerSchema accepts unknown extra keys', () => {
-  const result = findingsContainerSchema.safeParse({
-    findings: [{ path: 'a.ts', content: 'x', category: 'bug', severity: 'high', side: 'RIGHT', start_line: 1 }],
-    meta: 'ignored',
+  test('drops start_line for LEFT side', () => {
+    const data = parseOk(
+      findingSchemaStrict.safeParse({
+        path: 'a.ts',
+        content: 'x',
+        category: 'bug',
+        severity: 'high',
+        side: 'LEFT',
+        start_line: 1,
+      }),
+    );
+    expect(data.start_line).toBeUndefined();
   });
-  assert.ok(result.success);
-  assert.equal(result.data.findings?.length, 1);
+
+  test('coerces numeric string line numbers', () => {
+    const data = parseOk(
+      findingSchemaStrict.safeParse({
+        path: 'a.ts',
+        content: 'x',
+        category: 'bug',
+        severity: 'high',
+        side: 'RIGHT',
+        start_line: '3',
+      }),
+    );
+    expect(data.start_line).toBe(3);
+  });
 });
 
-test('findingsContainerSchema accepts an empty object', () => {
-  const result = findingsContainerSchema.safeParse({});
-  assert.equal(result.success, true);
+describe('findingSchema', () => {
+  test('defaults severity to medium when missing', () => {
+    const data = parseOk(
+      findingSchema.safeParse({
+        path: 'a.ts',
+        content: 'x',
+        category: 'bug',
+        side: 'RIGHT',
+        start_line: 1,
+      }),
+    );
+    expect(data?.severity).toBe('medium');
+  });
+
+  test('returns null for RIGHT side without start_line', () => {
+    const data = parseOk(
+      findingSchema.safeParse({
+        path: 'a.ts',
+        content: 'x',
+        category: 'bug',
+        severity: 'high',
+        side: 'RIGHT',
+      }),
+    );
+    expect(data).toBeNull();
+  });
 });
+
+describe('findingsContainerSchema', () => {
+  test('accepts unknown extra keys', () => {
+    const data = parseOk(
+      findingsContainerSchema.safeParse({
+        findings: [{ path: 'a.ts', content: 'x', category: 'bug', severity: 'high', side: 'RIGHT', start_line: 1 }],
+        meta: 'ignored',
+      }),
+    );
+    expect(data.findings).toHaveLength(1);
+  });
+
+  test('accepts an empty object', () => {
+    const result = findingsContainerSchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+});
+

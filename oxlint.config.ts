@@ -1,7 +1,7 @@
 import { defineConfig } from 'oxlint';
 
 export default defineConfig({
-  ignorePatterns: ['**/coverage/**', '**/dist/**', '**/node_modules/**', '**/prisma/generated/**'],
+  ignorePatterns: ['**/coverage/**', '**/dist/**', '**/node_modules/**', '**/prisma/generated/**', '**/.vendor/**'],
   overrides: [
     {
       files: ['**/*.test.ts', '**/tests/**/*.test.ts', '**/tests/**/*.ts', '**/test/helpers/**/*.ts'],

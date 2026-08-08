@@ -6,14 +6,26 @@
  */
 import type { RestEndpointMethodTypes } from '@octokit/rest';
 
+/** Optional seed data returned by `listReviews` / `listReviewComments`. */
+export interface FakeOctokitSeed {
+  reviews?: Array<Record<string, unknown>>;
+  reviewComments?: Array<Record<string, unknown>>;
+}
+
 type OctokitFile = RestEndpointMethodTypes['pulls']['listFiles']['response']['data'][number];
-type PullData = RestEndpointMethodTypes['pulls']['get']['response']['data'];
+
+type FakePullData = {
+  head: { sha: string; ref: string };
+  base: { ref: string };
+  title?: string;
+  body?: string;
+};
 
 export type FakeOctokitRest = {
   pulls: {
-    get: () => Promise<{ data: { head: Pick<PullData['head'], 'sha'> } }>;
+    get: () => Promise<{ data: FakePullData }>;
     update: (params: Record<string, unknown>) => Promise<{ data: unknown }>;
-    createReview: (params: Record<string, unknown>) => Promise<{ data: unknown }>;
+    createReview: (params: Record<string, unknown>) => Promise<{ data: { html_url?: string } }>;
     create: (params: Record<string, unknown>) => Promise<{ data: { html_url: string } }>;
     listFiles: (params: Record<string, unknown>) => Promise<{ data: OctokitFile[]; headers: { link: string } }>;
     listReviews: (params: Record<string, unknown>) => Promise<{ data: Array<Record<string, unknown>> }>;
@@ -63,28 +75,36 @@ export const createCaptures = (): OctokitCaptures => ({
 export const makeFakeOctokit = (
   files: Array<{ filename: string; patch?: string | null }>,
   captures: OctokitCaptures,
+  seed: FakeOctokitSeed = {},
 ): FakeOctokit => ({
   rest: {
     pulls: {
-      get: async () => ({ data: { head: { sha: 'abc123' } } }),
+      get: async () => ({
+        data: {
+          head: { sha: 'abc123', ref: 'feature-branch' },
+          base: { ref: 'main' },
+          title: 'Test PR',
+          body: 'Test body',
+        },
+      }),
       update: async (params) => {
         captures.prUpdates.push(params);
         return { data: {} };
       },
       createReview: async (params) => {
         captures.reviews.push(params);
-        return { data: {} };
+        return { data: { html_url: 'https://github.com/test/reviews/new' } };
       },
       create: async (params) => {
         captures.prCreates.push(params);
         return { data: { html_url: 'https://github.com/test/pr/1' } };
       },
-      listReviews: async () => ({ data: [] }),
+      listReviews: async () => ({ data: seed.reviews ?? [] }),
       updateReview: async (params) => {
         captures.reviewUpdates.push(params);
-        return { data: { html_url: 'https://github.com/test/reviews/1' } };
+        return { data: { html_url: 'https://github.com/test/reviews/updated' } };
       },
-      listReviewComments: async () => ({ data: [] }),
+      listReviewComments: async () => ({ data: seed.reviewComments ?? [] }),
       listFiles: async () => ({
         data: files.map((f) => ({
           sha: '',
@@ -140,3 +160,11 @@ export const makeFakeOctokit = (
       filename: f.filename,
     })),
 });
+
+/**
+ * Cast a FakeOctokit to the real Octokit type at call sites.
+ * Replaces the pervasive `as never` casts in tests while keeping the fake
+ * structurally compatible with the subset of the Octokit API under test.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the fake only implements a subset of Octokit
+export const toOctokit = (fake: FakeOctokit): never => fake as never;
