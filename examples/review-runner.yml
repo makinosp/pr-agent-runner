@@ -2,12 +2,18 @@ name: PR Agent Runner
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
   issue_comment:
     types: [created]
 
 jobs:
   review:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      github.event.comment.user.type != 'Bot' &&
+      contains(github.event.comment.body, vars.BOT_MENTION || '@opencode-review'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:

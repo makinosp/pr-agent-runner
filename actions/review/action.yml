@@ -175,6 +175,7 @@ runs:
 
     - name: Resolve PR metadata
       id: pr
+      if: github.event_name == 'pull_request' || steps.gate.outputs.triggered == 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -198,7 +199,7 @@ runs:
         fi
 
     - name: Checkout PR head SHA
-      if: steps.gate.outputs.triggered == 'true'
+      if: github.event_name == 'pull_request' || steps.gate.outputs.triggered == 'true'
       uses: actions/checkout@v7
       with:
         ref: ${{ steps.pr.outputs.head_sha }}

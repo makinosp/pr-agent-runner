@@ -77,7 +77,7 @@ export const parseConfig = (env: NodeJS.ProcessEnv): CliConfig => {
   const { owner, repo } = parseRepo(env);
   const prNumber = parsePrNumber(env);
 
-  if (env.COMMENT_ID !== undefined) {
+  if (env.COMMENT_ID !== undefined && env.COMMENT_ID !== '') {
     const commentId = Number(env.COMMENT_ID);
     if (!Number.isInteger(commentId) || commentId <= 0) throw new Error('COMMENT_ID is invalid');
     const commentBody = env.COMMENT_BODY ?? '';

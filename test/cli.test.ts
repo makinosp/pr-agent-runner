@@ -28,6 +28,16 @@ test('parseConfig defaults RESULT_PATH to result.json', () => {
   assert.equal(config.resultPath, 'result.json');
 });
 
+test('parseConfig stays in review mode when COMMENT_ID is empty', () => {
+  const config = parseConfig({
+    GITHUB_TOKEN: 'tok',
+    GITHUB_REPOSITORY: 'owner/repo',
+    PR_NUMBER: '42',
+    COMMENT_ID: '',
+  });
+  assert.equal(config.mode, 'review');
+});
+
 test('parseConfig throws when GITHUB_TOKEN is missing', () => {
   assert.throws(() => parseConfig({ GITHUB_REPOSITORY: 'owner/repo', PR_NUMBER: '1' }), /GITHUB_TOKEN/);
 });

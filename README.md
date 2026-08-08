@@ -2,7 +2,7 @@
 
 AI-powered PR review automation built on [OpenCodeReview (OCR)](https://open-codereview.ai/) and a small TypeScript CLI that posts reviews and answers `@mention` commands on GitHub.
 
-- **On PR open** — runs OCR on the PR diff and posts an inline review.
+- **On PR open, update, or reopen** — runs OCR on the PR diff and posts an inline review.
 - **On `@mention`** — supports:
   - `@bot review` — re-run the review and post an updated review.
   - `@bot fix` — auto-apply critical/high findings with suggestions via a new fix PR.
@@ -31,7 +31,7 @@ The whole flow is packaged as a **reusable composite action**, so any repository
 | Auto-fix | — | `@bot fix` opens a fix PR |
 | PR composition | — | Optional PR title/body rewrite (`compose-pr`) |
 | Outputs | `comments_total` / `comments_inline` / `comments_skipped` / `comments_routed` / `comments_failed` / `summary_comment_url` | Same set |
-| Fork security | Checks out the base branch and fetches the PR head as git objects (fork-safe) | `@mention` flow checks out the PR head directly (App must be installed on the fork) |
+| Fork security | Checks out the base branch and fetches the PR head as git objects (fork-safe) | Standard workflow supports same-repository PRs; fork support requires a separate security-reviewed design |
 
 ## Requirements
 
@@ -47,7 +47,7 @@ Create a GitHub App (or reuse one) with the following permissions:
 
 Install it on every repository that should be reviewed. The App token is used for all API calls (reviews, comments, fix branches/PRs), so it must have the permissions above on the target repos.
 
-> **Fork PRs**: to run `@bot` commands on PRs from forks, the App must also be installed on the fork repositories (a pre-existing limitation).
+> **Fork PRs**: the standard `pull_request` workflow cannot access repository secrets for fork PRs. This example therefore targets same-repository PRs. Supporting forks requires a separate, security-reviewed workflow design.
 
 ### 2. Repository variables and secrets
 
@@ -80,12 +80,19 @@ name: PR Agent Runner
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
   issue_comment:
     types: [created]
 
 jobs:
   review:
+    # Ignore non-PR comments, bot comments, and comments without the bot mention.
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      github.event.comment.user.type != 'Bot' &&
+      contains(github.event.comment.body, vars.BOT_MENTION || '@opencode-review'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
@@ -172,10 +179,10 @@ Findings are split into **inline comments** (RIGHT-side findings whose line rang
 
 ## Limitations
 
-- The workflow triggers only on PR **`opened`** (not on new commits pushed later) and on created comments.
+- The workflow triggers on PR **`opened`**, **`synchronize`**, and **`reopened`**, and on created comments. Each PR event posts a fresh inline review; set `incremental: "true"` if duplicate inline comments should be suppressed.
 - **Sticky summaries live in the review body**, not a pinned issue comment: when new inline comments arrive, a fresh review is posted alongside and the summary review is updated — the timeline therefore keeps multiple reviews, and the summary is not pinned at the top of the conversation.
 - **Incremental dedup is Bot-type based**: comments posted by a non-Bot user are never treated as duplicates, regardless of content.
-- `@bot` commands on fork PRs require the GitHub App to be installed on the fork.
+- The standard `pull_request` workflow cannot use repository secrets for fork PRs. As a result, automatic reviews are supported for PRs from the same repository; supporting fork PRs requires a separate, security-reviewed `pull_request_target` design.
 - The `runner-ref` input pins which version of the runner CLI is used; pin to a release tag for stability.
 
 ## License
