@@ -1,4 +1,4 @@
-import type { ChatCliConfig, CliConfig, CliDeps, RepoRef, ReviewCliConfig } from './types.ts';
+import type { ChatCliConfig, CliConfig, CliDeps, RepoRef, ReviewCliConfig, ReviewOptions } from './types.ts';
 import type { Finding } from './schemas/finding.ts';
 import { execFile } from 'node:child_process';
 import { writeFile as fsWriteFile } from 'node:fs/promises';
@@ -12,7 +12,7 @@ import { resolveLlmConfig } from './chat/llm.ts';
 import { fetchPrContext, parseMention, type PrContext } from './chat/mention.ts';
 import { composePrTitleBody } from './chat/pr-compose.ts';
 import { loadFindings } from './input/loader.ts';
-import { postReview, type ReviewOptions } from './output/github-review.ts';
+import { postReview } from './output/github-review.ts';
 
 const execFileAsync = promisify(execFile);
 
