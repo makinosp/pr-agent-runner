@@ -1,5 +1,5 @@
 import type { Octokit } from '@octokit/rest';
-import type { RepoRef } from '../schemas/common.ts';
+import type { RepoRef } from '../types.ts';
 import type { ChatMessage } from './llm.ts';
 import type { PrContext } from './mention.ts';
 import { fetchPrDiffContext } from './mention.ts';
@@ -7,7 +7,7 @@ import { fetchPrDiffContext } from './mention.ts';
 /**
  * Build user message text for the LLM from PR context (title, base, head SHA, body, and diff).
  */
-export const buildPrContextBlock = (pr: PrContext, diff: string, label: string, extraInstruction?: string): string => {
+const buildPrContextBlock = (pr: PrContext, diff: string, label: string, extraInstruction?: string): string => {
   const lines = [
     `# PR Context`,
     ``,

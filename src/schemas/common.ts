@@ -3,14 +3,8 @@ import { z } from 'zod';
 export type Severity = z.infer<typeof severitySchema>;
 export type Category = z.infer<typeof categorySchema>;
 
-/** Repository reference (owner + name). */
-export interface RepoRef {
-  readonly owner: string;
-  readonly repo: string;
-}
-
-export const severityValues = ['critical', 'high', 'medium', 'low'] as const satisfies string[];
-export const categoryValues = [
+const severityValues = ['critical', 'high', 'medium', 'low'] as const satisfies string[];
+const categoryValues = [
   'bug',
   'security',
   'performance',

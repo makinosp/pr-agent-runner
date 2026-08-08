@@ -3,7 +3,7 @@ import type { LlmConfig, ChatMessage } from './llm.ts';
 import { chat } from './llm.ts';
 import type { PrContext } from './mention.ts';
 import { buildPrChatMessages } from './prompt-context.ts';
-import type { RepoRef } from '../schemas/common.ts';
+import type { RepoRef } from '../types.ts';
 
 const SYSTEM_PROMPT = `You are a code review assistant operating on Pull Requests.
 You work in conjunction with OpenCodeReview (OCR), a code review tool, and answer questions by referencing the PR diff and metadata.

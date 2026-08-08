@@ -1,5 +1,5 @@
 import type { Octokit } from '@octokit/rest';
-import type { RepoRef } from '../schemas/common.ts';
+import type { RepoRef } from '../types.ts';
 import type { LlmConfig } from './llm.ts';
 import type { PrContext } from './mention.ts';
 import { z } from 'zod';
@@ -36,7 +36,7 @@ const composedPrSchema = z.object({
   body: z.string().min(1),
 });
 
-export type ComposedPr = z.infer<typeof composedPrSchema>;
+type ComposedPr = z.infer<typeof composedPrSchema>;
 
 export const parseComposed = (raw: string): ComposedPr | null => {
   const text = raw.trim();

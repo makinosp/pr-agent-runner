@@ -1,4 +1,4 @@
-import type { RepoRef } from './schemas/common.ts';
+import type { ChatCliConfig, CliConfig, CliDeps, RepoRef, ReviewCliConfig } from './types.ts';
 import type { Finding } from './schemas/finding.ts';
 import { execFile } from 'node:child_process';
 import { writeFile as fsWriteFile } from 'node:fs/promises';
@@ -15,61 +15,6 @@ import { loadFindings } from './input/loader.ts';
 import { postReview, type ReviewOptions } from './output/github-review.ts';
 
 const execFileAsync = promisify(execFile);
-
-/**
- * Test seams for the CLI entry points. All fields default to the real
- * implementations so production behaviour is unchanged.
- */
-export interface CliDeps {
-  /** Override Octokit construction (defaults to real Octokit). */
-  octokitFactory?: (token: string) => Octokit;
-  /** Override execFile (defaults to promisified node:child_process.execFile). */
-  execFile?: (
-    file: string,
-    args: readonly string[],
-    options?: Record<string, unknown>,
-  ) => Promise<{ stdout: string; stderr: string }>;
-  /** Override writeFile (defaults to node:fs/promises.writeFile). */
-  writeFile?: (path: string, data: string, encoding: 'utf8') => Promise<void>;
-  /** Override @actions/core.info (defaults to the real one). */
-  info?: (message: string) => void;
-  /** Override @actions/core.setOutput (defaults to the real one). */
-  setOutput?: (name: string, value: string) => void;
-  /** Override @actions/core.setFailed (defaults to the real one). */
-  setFailed?: (message: string) => void;
-}
-
-interface ReviewCliConfig {
-  readonly mode: 'review';
-  readonly token: string;
-  readonly owner: string;
-  readonly repo: string;
-  readonly prNumber: number;
-  readonly resultPath: string;
-  readonly composePr: boolean;
-  readonly baseRef?: string;
-  readonly headSha?: string;
-  readonly stickySummary: boolean;
-  readonly incremental: boolean;
-  readonly incrementalOverlapThreshold: string;
-  readonly batchSize: string;
-  readonly routeSeverityBelow: string;
-  readonly routeCategories: string;
-}
-
-interface ChatCliConfig {
-  readonly mode: 'chat' | 'review-on-mention';
-  readonly token: string;
-  readonly owner: string;
-  readonly repo: string;
-  readonly prNumber: number;
-  readonly commentId: number;
-  readonly commentBody: string;
-  readonly commentUser: string;
-  readonly botMention: string;
-}
-
-type CliConfig = ReviewCliConfig | ChatCliConfig;
 
 const parseRepo = (env: NodeJS.ProcessEnv): RepoRef => {
   const [owner, repo] = env.GITHUB_REPOSITORY?.split('/') ?? [];

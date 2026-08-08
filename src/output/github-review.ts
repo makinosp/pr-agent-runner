@@ -14,7 +14,7 @@ import {
   sortCommentsDeterministically,
 } from '../domain/post-comments.ts';
 import { buildCommentBody } from './markdown.ts';
-import type { RepoRef } from '../schemas/common.ts';
+import type { RepoRef } from '../types.ts';
 
 type RawComment = NonNullable<RestEndpointMethodTypes['pulls']['createReview']['parameters']['comments']>[number];
 type Comment = Partial<Pick<RawComment, 'position' | 'start_line' | 'start_side'>> & Required<Omit<RawComment, 'position' | 'start_line' | 'start_side'>>;
@@ -39,7 +39,7 @@ export interface ReviewOptions {
   readonly routeCategories?: string;
 }
 
-export interface ReviewStats {
+interface ReviewStats {
   readonly total: number;
   readonly inline: number;
   readonly skipped: number;

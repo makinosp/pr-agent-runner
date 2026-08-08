@@ -7,14 +7,14 @@
  *   restore();
  */
 
-export interface FetchResponse {
+interface FetchResponse {
   status?: number;
   ok?: boolean;
   body: unknown;
   headers?: Record<string, string>;
 }
 
-export interface FetchCall {
+interface FetchCall {
   url: string;
   init: RequestInit;
 }

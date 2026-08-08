@@ -1,5 +1,5 @@
 import type { Octokit, RestEndpointMethodTypes } from '@octokit/rest';
-import type { RepoRef } from '../schemas/common.ts';
+import type { RepoRef } from '../types.ts';
 
 type Files = RestEndpointMethodTypes['pulls']['listFiles']['response']['data'];
 type PullData = RestEndpointMethodTypes['pulls']['get']['response']['data'];
@@ -14,7 +14,7 @@ export interface PrContext {
   readonly body: NonNullable<PullData['body']>;
 }
 
-export interface MentionPayload {
+interface MentionPayload {
   readonly mode: 'review' | 'chat' | 'fix';
   readonly question: string;
 }
