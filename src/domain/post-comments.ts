@@ -258,9 +258,9 @@ export const buildRoutePolicy = (
  * routing is on) OR its category is in the category list (when category
  * routing is on).
  *
- * Severity rank increases as severity decreases (critical=0 … low=3) and the
- * threshold is inclusive of the severity one level above the configured one,
- * so `routeSeverityBelow='low'` routes medium and low to the summary.
+ * Severity rank increases as severity decreases (critical=0 … low=3), so the
+ * configured threshold itself and less severe findings are routed to the
+ * summary. For example, `routeSeverityBelow='medium'` routes medium and low.
  * Unknown/malformed metadata NEVER matches: an empty/unknown category or
  * severity falls through to the normal inline path (visible, never dropped).
  */
@@ -271,7 +271,7 @@ export const shouldRoute = (finding: { readonly severity?: string; readonly cate
   const catKnown = catRaw !== '' && isCategory(catRaw);
   const sevKnown = sevRaw !== '' && isSeverity(sevRaw);
 
-  if (policy.routeBySeverity && sevKnown && SEVERITY_RANK[sevRaw] >= policy.severityRank - 1) {
+  if (policy.routeBySeverity && sevKnown && SEVERITY_RANK[sevRaw] >= policy.severityRank) {
     return { routed: true, reason: `Routed to summary (severity ${sevRaw}${catKnown ? ` · category ${catRaw}` : ''})` };
   }
   if (policy.routeByCategory && catKnown && policy.categories.has(catRaw)) {

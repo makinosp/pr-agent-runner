@@ -210,10 +210,18 @@ test('buildRoutePolicy normalizes severity and categories case-insensitively', (
   assert.deepEqual([...policy.categories].sort(), ['documentation', 'style']);
 });
 
-test('shouldRoute: severity below "low" routes medium and low but not high/critical', () => {
+test('shouldRoute: severity below "low" routes low but not medium/high/critical', () => {
   const policy = buildRoutePolicy('low', '');
   assert.equal(shouldRoute({ severity: 'low' }, policy).routed, true);
+  assert.equal(shouldRoute({ severity: 'medium' }, policy).routed, false);
+  assert.equal(shouldRoute({ severity: 'high' }, policy).routed, false);
+  assert.equal(shouldRoute({ severity: 'critical' }, policy).routed, false);
+});
+
+test('shouldRoute: severity below "medium" routes medium and low but not high/critical', () => {
+  const policy = buildRoutePolicy('medium', '');
   assert.equal(shouldRoute({ severity: 'medium' }, policy).routed, true);
+  assert.equal(shouldRoute({ severity: 'low' }, policy).routed, true);
   assert.equal(shouldRoute({ severity: 'high' }, policy).routed, false);
   assert.equal(shouldRoute({ severity: 'critical' }, policy).routed, false);
 });
@@ -242,9 +250,9 @@ test('shouldRoute: NO_ROUTING never routes anything', () => {
 
 test('shouldRoute: a routed result carries a reason', () => {
   const policy = buildRoutePolicy('low', '');
-  const result = shouldRoute({ severity: 'medium', category: 'bug' }, policy);
+  const result = shouldRoute({ severity: 'low', category: 'bug' }, policy);
   assert.equal(result.routed, true);
-  if (result.routed) assert.match(result.reason, /severity medium/);
+  if (result.routed) assert.match(result.reason, /severity low/);
 });
 
 test('CATEGORIES contains the expected enumeration', () => {

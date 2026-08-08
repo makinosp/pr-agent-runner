@@ -262,7 +262,7 @@ test('postReview ignores history comments from non-bot users', async () => {
 
 // ---- routing ----
 
-test('postReview routes medium and low findings to the summary with routeSeverityBelow=low', async () => {
+test('postReview routes only low findings to the summary with routeSeverityBelow=low', async () => {
   const captured: Array<Record<string, unknown>> = [];
   const octokit = makeFakeOctokit([{ filename: 'a.ts', patch: PATCH }], captured);
   const stats = await postReview(
@@ -273,15 +273,36 @@ test('postReview routes medium and low findings to the summary with routeSeverit
     { routeSeverityBelow: 'low' },
   );
 
-  assert.equal(stats.routed, 2);
-  assert.equal(stats.inline, 1);
+  assert.equal(stats.routed, 1);
+  assert.equal(stats.inline, 2);
   assert.equal(captured.length, 1);
   const review = captured[0] as { comments: Array<Record<string, unknown>>; body: string };
-  assert.equal(review.comments.length, 1);
-  assert.equal(review.comments[0].line, 2); // only the high finding stays inline
-  assert.match(review.body, /medium/);
+  assert.deepEqual(review.comments.map((comment) => comment.line), [2, 3]);
   assert.match(review.body, /low/);
   assert.match(review.body, /Routed to summary/);
+});
+
+test('postReview routes only medium and low findings with routeSeverityBelow=medium', async () => {
+  const captured: Array<Record<string, unknown>> = [];
+  const octokit = makeFakeOctokit([{ filename: 'a.ts', patch: PATCH }], captured);
+  const stats = await postReview(
+    octokit as never,
+    { owner: 'o', repo: 'r' },
+    7,
+    [inlineFinding(1, 'critical'), inlineFinding(2, 'high'), inlineFinding(3, 'medium'), inlineFinding(5, 'low')],
+    { routeSeverityBelow: 'medium' },
+  );
+
+  assert.equal(stats.routed, 2);
+  assert.equal(stats.inline, 2);
+  assert.equal(captured.length, 1);
+  const review = captured[0] as { comments: Array<Record<string, unknown>>; body: string };
+  assert.deepEqual(
+    review.comments.map((comment) => comment.line),
+    [1, 2],
+  );
+  assert.match(review.body, /medium/);
+  assert.match(review.body, /low/);
 });
 
 test('postReview routes findings matching a configured category to the summary', async () => {
