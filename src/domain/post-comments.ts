@@ -45,8 +45,7 @@ export const CATEGORIES: readonly Category[] = [
 const isSeverity = (value: string): value is Severity =>
   (SEVERITY_RANK as Readonly<Record<string, number | undefined>>)[value] !== undefined;
 
-const isCategory = (value: string): value is Category =>
-  (CATEGORIES as readonly string[]).includes(value);
+const isCategory = (value: string): value is Category => (CATEGORIES as readonly string[]).includes(value);
 
 // ---- Batch sizing + deterministic ordering ----
 
@@ -155,8 +154,9 @@ export const resolveThreshold = (threshold: string | number | null | undefined):
 /** Decide whether a bot previously posted `comment`. Simplified from upstream
  * (login comparison + getAuthenticated): a GitHub App token always posts as a
  * Bot user, so the user type alone is sufficient. */
-export const isBotComment = (comment: { readonly user?: { readonly type?: string | null } | null } | null | undefined): boolean =>
-  comment?.user?.type === 'Bot';
+export const isBotComment = (
+  comment: { readonly user?: { readonly type?: string | null } | null } | null | undefined,
+): boolean => comment?.user?.type === 'Bot';
 
 /**
  * Incremental overlap test. The current comment is a duplicate of an existing
@@ -214,8 +214,7 @@ export const normalizeContent = (text: string | null | undefined): string =>
     .toLowerCase();
 
 /** Tokenize normalized text into a word set (empty tokens are dropped). */
-const tokenize = (text: string): ReadonlySet<string> =>
-  new Set(text.split(' ').filter((t) => t.length > 0));
+const tokenize = (text: string): ReadonlySet<string> => new Set(text.split(' ').filter((t) => t.length > 0));
 
 /** Jaccard coefficient between two token sets; 1 when both sets are empty. */
 export const jaccardSimilarity = (a: ReadonlySet<string>, b: ReadonlySet<string>): number => {
@@ -373,10 +372,17 @@ export const buildRoutePolicy = (
  * Unknown/malformed metadata NEVER matches: an empty/unknown category or
  * severity falls through to the normal inline path (visible, never dropped).
  */
-export const shouldRoute = (finding: { readonly severity?: string; readonly category?: string }, policy: RoutePolicy): RouteResult => {
+export const shouldRoute = (
+  finding: { readonly severity?: string; readonly category?: string },
+  policy: RoutePolicy,
+): RouteResult => {
   if (!policy.routeBySeverity && !policy.routeByCategory) return { routed: false };
-  const catRaw = String(finding.category ?? '').trim().toLowerCase();
-  const sevRaw = String(finding.severity ?? '').trim().toLowerCase();
+  const catRaw = String(finding.category ?? '')
+    .trim()
+    .toLowerCase();
+  const sevRaw = String(finding.severity ?? '')
+    .trim()
+    .toLowerCase();
   const catKnown = catRaw !== '' && isCategory(catRaw);
   const sevKnown = sevRaw !== '' && isSeverity(sevRaw);
 

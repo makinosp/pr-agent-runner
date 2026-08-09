@@ -42,11 +42,7 @@ describe('resolveBatchSize', () => {
 
 describe('chunkArray', () => {
   test('partitions into contiguous slices of at most size', () => {
-    expect(chunkArray([1, 2, 3, 4, 5], 2)).toEqual([
-      [1, 2],
-      [3, 4],
-      [5],
-    ]);
+    expect(chunkArray([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
   });
 
   test('yields one chunk of exact size when length is a multiple', () => {
@@ -92,16 +88,28 @@ describe('sortCommentsDeterministically', () => {
 
 describe('lineSpan', () => {
   const lineSpanCases: ReadonlyArray<
-    [string, { line?: number | null; start_line?: number | null }, { start: number; end: number; multiline: boolean } | null]
+    [
+      string,
+      { line?: number | null; start_line?: number | null },
+      { start: number; end: number; multiline: boolean } | null,
+    ]
   > = [
-      ['resolves a single-line comment from line', { line: 3 }, { start: 3, end: 3, multiline: false }],
-      ['resolves a multi-line comment from start_line and line', { start_line: 2, line: 5 }, { start: 2, end: 5, multiline: true }],
-      ['treats start_line === line as single-line', { start_line: 3, line: 3 }, { start: 3, end: 3, multiline: false }],
-      ['returns null when no line can be resolved', {}, null],
-      ['returns null when start_line is 0', { start_line: 0 }, null],
-      ['returns null when line is null', { line: null }, null],
-      ['normalizes reversed start/end to ascending order', { start_line: 8, line: 3 }, { start: 3, end: 8, multiline: true }],
-    ];
+    ['resolves a single-line comment from line', { line: 3 }, { start: 3, end: 3, multiline: false }],
+    [
+      'resolves a multi-line comment from start_line and line',
+      { start_line: 2, line: 5 },
+      { start: 2, end: 5, multiline: true },
+    ],
+    ['treats start_line === line as single-line', { start_line: 3, line: 3 }, { start: 3, end: 3, multiline: false }],
+    ['returns null when no line can be resolved', {}, null],
+    ['returns null when start_line is 0', { start_line: 0 }, null],
+    ['returns null when line is null', { line: null }, null],
+    [
+      'normalizes reversed start/end to ascending order',
+      { start_line: 8, line: 3 },
+      { start: 3, end: 8, multiline: true },
+    ],
+  ];
 
   for (const [name, comment, expected] of lineSpanCases) {
     test(name, () => {
@@ -110,36 +118,53 @@ describe('lineSpan', () => {
   }
 });
 
-
 describe('sameCommentSpan', () => {
   test('two single-line comments are the same only on the same line', () => {
-    expect(sameCommentSpan({ start: 3, end: 3, multiline: false }, { start: 3, end: 3, multiline: false }, 0.6)).toBe(true);
-    expect(sameCommentSpan({ start: 3, end: 3, multiline: false }, { start: 4, end: 4, multiline: false }, 0.6)).toBe(false);
+    expect(sameCommentSpan({ start: 3, end: 3, multiline: false }, { start: 3, end: 3, multiline: false }, 0.6)).toBe(
+      true,
+    );
+    expect(sameCommentSpan({ start: 3, end: 3, multiline: false }, { start: 4, end: 4, multiline: false }, 0.6)).toBe(
+      false,
+    );
   });
 
   test('single-line is never the same as multi-line', () => {
-    expect(sameCommentSpan({ start: 3, end: 3, multiline: false }, { start: 3, end: 5, multiline: true }, 0.6)).toBe(false);
-    expect(sameCommentSpan({ start: 3, end: 5, multiline: true }, { start: 3, end: 3, multiline: false }, 0.6)).toBe(false);
+    expect(sameCommentSpan({ start: 3, end: 3, multiline: false }, { start: 3, end: 5, multiline: true }, 0.6)).toBe(
+      false,
+    );
+    expect(sameCommentSpan({ start: 3, end: 5, multiline: true }, { start: 3, end: 3, multiline: false }, 0.6)).toBe(
+      false,
+    );
   });
 
   test('multi-line IoU strictly above the threshold is a duplicate', () => {
     // cur [2..6] (5 lines), other [4..8] (5 lines): overlap [4..6] = 3, union 7, IoU = 3/7 ≈ 0.43
-    expect(sameCommentSpan({ start: 2, end: 6, multiline: true }, { start: 4, end: 8, multiline: true }, 0.4)).toBe(true);
+    expect(sameCommentSpan({ start: 2, end: 6, multiline: true }, { start: 4, end: 8, multiline: true }, 0.4)).toBe(
+      true,
+    );
     // cur [2..6] (5), other [5..6] (2): overlap 2, union 5, IoU = 0.4
-    expect(sameCommentSpan({ start: 2, end: 6, multiline: true }, { start: 5, end: 6, multiline: true }, 0.3)).toBe(true);
+    expect(sameCommentSpan({ start: 2, end: 6, multiline: true }, { start: 5, end: 6, multiline: true }, 0.3)).toBe(
+      true,
+    );
   });
 
   test('multi-line IoU equal to the threshold is NOT a duplicate (strict >)', () => {
     // cur [1..4] (4), other [3..6] (4): overlap [3..4] = 2, union 6, IoU = 1/3
-    expect(sameCommentSpan({ start: 1, end: 4, multiline: true }, { start: 3, end: 6, multiline: true }, 1 / 3)).toBe(false);
+    expect(sameCommentSpan({ start: 1, end: 4, multiline: true }, { start: 3, end: 6, multiline: true }, 1 / 3)).toBe(
+      false,
+    );
   });
 
   test('multi-line IoU below the threshold is NOT a duplicate', () => {
-    expect(sameCommentSpan({ start: 1, end: 4, multiline: true }, { start: 3, end: 6, multiline: true }, 0.6)).toBe(false);
+    expect(sameCommentSpan({ start: 1, end: 4, multiline: true }, { start: 3, end: 6, multiline: true }, 0.6)).toBe(
+      false,
+    );
   });
 
   test('non-overlapping multi-line spans are never duplicates', () => {
-    expect(sameCommentSpan({ start: 1, end: 2, multiline: true }, { start: 10, end: 12, multiline: true }, 0.1)).toBe(false);
+    expect(sameCommentSpan({ start: 1, end: 2, multiline: true }, { start: 10, end: 12, multiline: true }, 0.1)).toBe(
+      false,
+    );
   });
 });
 
@@ -403,4 +428,3 @@ describe('routing', () => {
     ]);
   });
 });
-

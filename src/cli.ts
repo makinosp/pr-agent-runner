@@ -132,22 +132,16 @@ export const runReview = async (config: ReviewCliConfig, deps: CliDeps = {}): Pr
       return;
     }
 
-    const stats = await postReview(
-      octokit,
-      { owner: config.owner, repo: config.repo },
-      config.prNumber,
-      findings,
-      {
-        sticky: config.stickySummary,
-        incremental: config.incremental,
-        incrementalOverlapThreshold: config.incrementalOverlapThreshold,
-        contentBasedDeduplication: config.contentBasedDeduplication,
-        contentSimilarityThreshold: config.contentSimilarityThreshold,
-        batchSize: config.batchSize,
-        routeSeverityBelow: config.routeSeverityBelow,
-        routeCategories: config.routeCategories,
-      },
-    );
+    const stats = await postReview(octokit, { owner: config.owner, repo: config.repo }, config.prNumber, findings, {
+      sticky: config.stickySummary,
+      incremental: config.incremental,
+      incrementalOverlapThreshold: config.incrementalOverlapThreshold,
+      contentBasedDeduplication: config.contentBasedDeduplication,
+      contentSimilarityThreshold: config.contentSimilarityThreshold,
+      batchSize: config.batchSize,
+      routeSeverityBelow: config.routeSeverityBelow,
+      routeCategories: config.routeCategories,
+    });
     setOutput('comments_total', String(stats.total));
     setOutput('comments_inline', String(stats.inline));
     setOutput('comments_skipped', String(stats.skipped));

@@ -1,11 +1,7 @@
 import type { Octokit } from '@octokit/rest';
 import type { Finding } from '../schemas/finding.ts';
 import { resolveEndLine } from '../schemas/finding.ts';
-import {
-  buildReviewableRightLineMap,
-  splitFindingsForReview,
-  type InlineFinding,
-} from '../domain/reviewable-lines.ts';
+import { buildReviewableRightLineMap, splitFindingsForReview, type InlineFinding } from '../domain/reviewable-lines.ts';
 import {
   SUMMARY_MARKER,
   buildRoutePolicy,
@@ -96,7 +92,9 @@ const listExistingReviewComments = async (
     return [];
   }
   if (page > MAX_PAGES) {
-    console.info(`[incremental] listing review comments reached max page limit (${MAX_PAGES}); results may be incomplete.`);
+    console.info(
+      `[incremental] listing review comments reached max page limit (${MAX_PAGES}); results may be incomplete.`,
+    );
   }
   return all;
 };
@@ -295,5 +293,12 @@ export const postReview = async (
     if (typeof review.html_url === 'string') summaryUrl = review.html_url;
   }
 
-  return { total: findings.length, inline, skipped, routed, failed, ...(summaryUrl !== undefined ? { summaryUrl } : {}) };
+  return {
+    total: findings.length,
+    inline,
+    skipped,
+    routed,
+    failed,
+    ...(summaryUrl !== undefined ? { summaryUrl } : {}),
+  };
 };

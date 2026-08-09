@@ -104,7 +104,13 @@ describe('postReview sticky summary', () => {
 
   test('updates the existing summary review in place when sticky', async () => {
     const { octokit, captures } = fakeFor([{ filename: 'a.ts', patch: PATCH }], createCaptures(), {
-      reviews: [{ id: 42, body: '<!-- ocr-review-summary -->\nold summary', html_url: 'https://github.com/o/r/pull/7/reviews/42' }],
+      reviews: [
+        {
+          id: 42,
+          body: '<!-- ocr-review-summary -->\nold summary',
+          html_url: 'https://github.com/o/r/pull/7/reviews/42',
+        },
+      ],
     });
     const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [inlineFinding(3)]);
 
@@ -147,9 +153,13 @@ describe('postReview sticky summary', () => {
 describe('postReview incremental', () => {
   test('skips an inline comment overlapping an existing bot comment on the same line', async () => {
     const { octokit, captures } = fakeFor([{ filename: 'a.ts', patch: PATCH }], createCaptures(), {
-      reviewComments: [{ path: 'a.ts', start_line: null, line: 3, side: 'RIGHT', user: { type: 'Bot', login: 'app[bot]' } }],
+      reviewComments: [
+        { path: 'a.ts', start_line: null, line: 3, side: 'RIGHT', user: { type: 'Bot', login: 'app[bot]' } },
+      ],
     });
-    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [inlineFinding(3)], { incremental: true });
+    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [inlineFinding(3)], {
+      incremental: true,
+    });
 
     expect(stats.skipped).toBe(1);
     expect(stats.inline).toBe(0);
@@ -163,7 +173,9 @@ describe('postReview incremental', () => {
     const { octokit } = fakeFor([{ filename: 'a.ts', patch: PATCH }], createCaptures(), {
       reviewComments: [{ path: 'a.ts', start_line: 2, line: 4, side: 'RIGHT', user: { type: 'Bot' } }],
     });
-    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [inlineFinding(3)], { incremental: true });
+    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [inlineFinding(3)], {
+      incremental: true,
+    });
 
     expect(stats.skipped).toBe(0);
     expect(stats.inline).toBe(1);
@@ -174,7 +186,9 @@ describe('postReview incremental', () => {
       reviewComments: [{ path: 'a.ts', start_line: 3, line: 5, side: 'RIGHT', user: { type: 'Bot' } }],
     });
     // cur [1..4] (4 lines), other [3..5] (3): overlap 2, union 5, IoU = 0.4 <= 0.6
-    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [multiLineFinding(1, 4)], { incremental: true });
+    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [multiLineFinding(1, 4)], {
+      incremental: true,
+    });
 
     expect(stats.skipped).toBe(0);
     expect(stats.inline).toBe(1);
@@ -185,7 +199,9 @@ describe('postReview incremental', () => {
       reviewComments: [{ path: 'a.ts', start_line: 2, line: 5, side: 'RIGHT', user: { type: 'Bot' } }],
     });
     // cur [1..5] (5), other [2..5] (4): overlap 4, union 5, IoU = 0.8 > 0.6
-    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [multiLineFinding(1, 5)], { incremental: true });
+    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [multiLineFinding(1, 5)], {
+      incremental: true,
+    });
 
     expect(stats.skipped).toBe(1);
     expect(stats.inline).toBe(0);
@@ -193,9 +209,13 @@ describe('postReview incremental', () => {
 
   test('ignores history comments from non-bot users', async () => {
     const { octokit } = fakeFor([{ filename: 'a.ts', patch: PATCH }], createCaptures(), {
-      reviewComments: [{ path: 'a.ts', start_line: null, line: 3, side: 'RIGHT', user: { type: 'User', login: 'human' } }],
+      reviewComments: [
+        { path: 'a.ts', start_line: null, line: 3, side: 'RIGHT', user: { type: 'User', login: 'human' } },
+      ],
     });
-    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [inlineFinding(3)], { incremental: true });
+    const stats = await postReview(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, [inlineFinding(3)], {
+      incremental: true,
+    });
 
     expect(stats.skipped).toBe(0);
     expect(stats.inline).toBe(1);
