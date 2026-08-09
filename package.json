@@ -1,9 +1,9 @@
 {
   "name": "pr-agent-runner",
   "version": "0.1.0",
+  "private": true,
   "description": "AI-powered PR review automation: runs OpenCodeReview (OCR) on PRs and handles @mention review/fix/chat commands, packaged as a reusable GitHub composite action.",
   "license": "BSD-3-Clause",
-  "private": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/makinosp/pr-agent-runner.git"
@@ -12,6 +12,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
+    "format": "oxfmt",
     "test": "node --test \"test/**/*.test.ts\"",
     "test:watch": "node --test --watch \"test/**/*.test.ts\"",
     "test:coverage": "node --test --experimental-test-coverage \"test/**/*.test.ts\"",
@@ -26,6 +27,7 @@
     "@octokit/types": "^16.0.0",
     "@types/node": "^26.1.1",
     "expect": "^30.4.1",
+    "oxfmt": "^0.62.0",
     "oxlint": "^1.76.0",
     "typescript": "~7.0.2"
   }

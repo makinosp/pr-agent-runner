@@ -59,7 +59,10 @@ export const applyReplacement = (
  */
 const sanitizeBranchSegment = (mention: string): string => {
   const name = mention.startsWith('@') ? mention.slice(1) : mention;
-  const sanitized = name.replace(/[^A-Za-z0-9._-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const sanitized = name
+    .replace(/[^A-Za-z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
   return sanitized || 'bot';
 };
 

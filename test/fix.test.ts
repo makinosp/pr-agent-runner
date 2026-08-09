@@ -91,9 +91,7 @@ describe('applyFixes', () => {
   test('creates branch, applies fixes, and creates PR', async () => {
     const captures = createCaptures();
     const octokit = makeFakeOctokit([], captures);
-    const targets = [
-      { path: 'src/a.ts', startLine: 1, endLine: 1, suggestion: 'fixed line' },
-    ];
+    const targets = [{ path: 'src/a.ts', startLine: 1, endLine: 1, suggestion: 'fixed line' }];
     const result = await applyFixes(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, targets, 'head-sha', 'main');
     expect(result.changedFiles).toBe(1);
     expect(result.prUrl).toBeTruthy();
@@ -105,9 +103,7 @@ describe('applyFixes', () => {
   test('uses custom botMention in fix branch name', async () => {
     const captures = createCaptures();
     const octokit = makeFakeOctokit([], captures);
-    const targets = [
-      { path: 'src/a.ts', startLine: 1, endLine: 1, suggestion: 'fixed line' },
-    ];
+    const targets = [{ path: 'src/a.ts', startLine: 1, endLine: 1, suggestion: 'fixed line' }];
     const result = await applyFixes(
       toOctokit(octokit),
       { owner: 'o', repo: 'r' },
@@ -130,9 +126,7 @@ describe('applyFixes', () => {
       err.status = 422;
       throw err;
     };
-    const targets = [
-      { path: 'src/a.ts', startLine: 1, endLine: 1, suggestion: 'fixed' },
-    ];
+    const targets = [{ path: 'src/a.ts', startLine: 1, endLine: 1, suggestion: 'fixed' }];
     // Should not throw - 422 is handled gracefully
     const result = await applyFixes(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, targets, 'sha', 'main');
     expect(result.changedFiles).toBe(1);
@@ -143,9 +137,7 @@ describe('applyFixes', () => {
     const octokit = makeFakeOctokit([], captures);
     // Override getContent to return directory (no content)
     octokit.rest.repos.getContent = async () => ({ data: {} });
-    const targets = [
-      { path: 'src/dir', startLine: 1, endLine: 1, suggestion: 'fixed' },
-    ];
+    const targets = [{ path: 'src/dir', startLine: 1, endLine: 1, suggestion: 'fixed' }];
     const result = await applyFixes(toOctokit(octokit), { owner: 'o', repo: 'r' }, 7, targets, 'sha', 'main');
     expect(result.changedFiles).toBe(0);
   });
@@ -167,4 +159,3 @@ describe('applyFixes', () => {
     );
   });
 });
-

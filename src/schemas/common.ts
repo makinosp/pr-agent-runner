@@ -15,10 +15,7 @@ const categoryValues = [
   'other',
 ] as const satisfies string[];
 
-const normalizedEnum = <T extends readonly string[]>(
-  values: T,
-  fallback: T[number],
-): z.ZodType<T[number], unknown> =>
+const normalizedEnum = <T extends readonly string[]>(values: T, fallback: T[number]): z.ZodType<T[number], unknown> =>
   z.preprocess((v) => (typeof v === 'string' ? v.toLowerCase().trim() : ''), z.enum(values).catch(fallback));
 
 export const severitySchema = normalizedEnum(severityValues, 'medium');
