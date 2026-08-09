@@ -174,6 +174,8 @@ describe('parseConfig', () => {
     expect(config.stickySummary).toBe(true);
     expect(config.incremental).toBe(false);
     expect(config.incrementalOverlapThreshold).toBe('');
+    expect(config.contentBasedDeduplication).toBe(true);
+    expect(config.contentSimilarityThreshold).toBe('');
     expect(config.batchSize).toBe('');
     expect(config.routeSeverityBelow).toBe('');
     expect(config.routeCategories).toBe('');
@@ -188,6 +190,8 @@ describe('parseConfig', () => {
         REVIEW_STICKY_SUMMARY: 'false',
         REVIEW_INCREMENTAL: 'true',
         REVIEW_INCREMENTAL_OVERLAP_THRESHOLD: '0.3',
+        REVIEW_CONTENT_BASED_DEDUPLICATION: 'false',
+        REVIEW_CONTENT_SIMILARITY_THRESHOLD: '0.9',
         REVIEW_COMMENT_BATCH_SIZE: '10',
         REVIEW_ROUTE_SEVERITY_BELOW: 'low',
         REVIEW_ROUTE_CATEGORIES: 'style, documentation',
@@ -196,6 +200,8 @@ describe('parseConfig', () => {
     expect(config.stickySummary).toBe(false);
     expect(config.incremental).toBe(true);
     expect(config.incrementalOverlapThreshold).toBe('0.3');
+    expect(config.contentBasedDeduplication).toBe(false);
+    expect(config.contentSimilarityThreshold).toBe('0.9');
     expect(config.batchSize).toBe('10');
     expect(config.routeSeverityBelow).toBe('low');
     expect(config.routeCategories).toBe('style, documentation');

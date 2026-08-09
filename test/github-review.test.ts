@@ -202,6 +202,111 @@ describe('postReview incremental', () => {
   });
 });
 
+describe('postReview content-based dedup', () => {
+  test('skips an inline comment whose content matches a bot comment on the same path, even on a different line', async () => {
+    const { octokit } = fakeFor([{ filename: 'a.ts', patch: PATCH }], createCaptures(), {
+      reviewComments: [
+        {
+          path: 'a.ts',
+          start_line: null,
+          line: 2,
+          side: 'RIGHT',
+          user: { type: 'Bot' },
+          body: '[bug · high]\n\nUse unsafe method here',
+        },
+      ],
+    });
+    const stats = await postReview(
+      toOctokit(octokit),
+      { owner: 'o', repo: 'r' },
+      7,
+      [{ ...inlineFinding(3), content: 'use unsafe method here' }],
+      { incremental: true },
+    );
+
+    expect(stats.skipped).toBe(1);
+    expect(stats.inline).toBe(0);
+  });
+
+  test('does not skip when both the content and the lines differ', async () => {
+    const { octokit, captures } = fakeFor([{ filename: 'a.ts', patch: PATCH }], createCaptures(), {
+      reviewComments: [
+        {
+          path: 'a.ts',
+          start_line: null,
+          line: 2,
+          side: 'RIGHT',
+          user: { type: 'Bot' },
+          body: '[bug · high]\n\ncompletely different concern',
+        },
+      ],
+    });
+    const stats = await postReview(
+      toOctokit(octokit),
+      { owner: 'o', repo: 'r' },
+      7,
+      [{ ...inlineFinding(3), content: 'use unsafe method here' }],
+      { incremental: true },
+    );
+
+    expect(stats.skipped).toBe(0);
+    expect(stats.inline).toBe(1);
+    expect(captures.reviews).toHaveLength(1);
+  });
+
+  test('content dedup can be disabled via contentBasedDeduplication false', async () => {
+    const { octokit, captures } = fakeFor([{ filename: 'a.ts', patch: PATCH }], createCaptures(), {
+      reviewComments: [
+        {
+          path: 'a.ts',
+          start_line: null,
+          line: 2,
+          side: 'RIGHT',
+          user: { type: 'Bot' },
+          body: '[bug · high]\n\nuse unsafe method here',
+        },
+      ],
+    });
+    const stats = await postReview(
+      toOctokit(octokit),
+      { owner: 'o', repo: 'r' },
+      7,
+      [{ ...inlineFinding(3), content: 'use unsafe method here' }],
+      { incremental: true, contentBasedDeduplication: false },
+    );
+
+    expect(stats.skipped).toBe(0);
+    expect(stats.inline).toBe(1);
+    expect(captures.reviews).toHaveLength(1);
+  });
+
+  test('content similarity threshold tightens the duplicate test', async () => {
+    const { octokit } = fakeFor([{ filename: 'a.ts', patch: PATCH }], createCaptures(), {
+      reviewComments: [
+        {
+          path: 'a.ts',
+          start_line: null,
+          line: 2,
+          side: 'RIGHT',
+          user: { type: 'Bot' },
+          body: '[bug · high]\n\nuse unsafe method with extra context here',
+        },
+      ],
+    });
+    // share most tokens, but a high threshold keeps them distinct.
+    const stats = await postReview(
+      toOctokit(octokit),
+      { owner: 'o', repo: 'r' },
+      7,
+      [{ ...inlineFinding(3), content: 'use unsafe method here' }],
+      { incremental: true, contentSimilarityThreshold: '0.99' },
+    );
+
+    expect(stats.skipped).toBe(0);
+    expect(stats.inline).toBe(1);
+  });
+});
+
 describe('postReview routing', () => {
   test('routes only low findings to the summary with routeSeverityBelow=low', async () => {
     const { octokit, captures } = fakeFor([{ filename: 'a.ts', patch: PATCH }]);

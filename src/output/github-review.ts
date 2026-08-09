@@ -7,8 +7,9 @@ import {
   buildRoutePolicy,
   chunkArray,
   isBotComment,
-  overlapsHistory,
+  isDuplicateComment,
   resolveBatchSize,
+  resolveContentThreshold,
   resolveThreshold,
   shouldRoute,
   sortCommentsDeterministically,
@@ -31,6 +32,11 @@ export interface ReviewOptions {
   readonly incremental?: boolean;
   /** IoU threshold for multi-line overlap in incremental mode (default: 0.6). */
   readonly incrementalOverlapThreshold?: string | number;
+  /** Also skip inline comments whose content matches a previously-posted bot
+   * comment on the same path, even when the lines differ (default: true). */
+  readonly contentBasedDeduplication?: boolean;
+  /** Jaccard threshold in [0, 1] for content-based dedup (default: 0.8). */
+  readonly contentSimilarityThreshold?: string | number;
   /** Max inline comments per createReview call (default: 50). */
   readonly batchSize?: string | number;
   /** Route findings at-or-below this severity to the summary (default: none). */
@@ -225,13 +231,23 @@ export const postReview = async (
   const comments = remainingInline.map(toComment);
 
   // Incremental filtering: drop inline comments whose (path, line range)
-  // overlaps an existing bot review comment. History is never deleted.
+  // overlaps an existing bot review comment, or whose content matches one.
+  // History is never deleted.
   let skipped = 0;
   let toSend = comments;
   if (incremental && comments.length > 0) {
     const existing = await listExistingReviewComments(octokit, repo, prNumber);
     const history = existing.filter(isBotComment);
-    toSend = comments.filter((comment) => !overlapsHistory(comment, history, threshold));
+    const contentDedup = options.contentBasedDeduplication !== false;
+    const contentThreshold = resolveContentThreshold(options.contentSimilarityThreshold);
+    toSend = comments.filter(
+      (comment) =>
+        !isDuplicateComment(comment, history, {
+          lineThreshold: threshold,
+          content: contentDedup,
+          contentThreshold,
+        }),
+    );
     skipped = comments.length - toSend.length;
   }
 

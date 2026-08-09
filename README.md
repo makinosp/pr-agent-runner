@@ -26,7 +26,7 @@ The whole flow is packaged as a **reusable composite action**, so any repository
 | Authentication | Repository `GITHUB_TOKEN` | GitHub App token (App-scoped, no PAT) |
 | Triggers | Workflow events (PR open, push, …) | PR open **plus** `@mention` comments (`review` / `fix` / chat) |
 | Posting | Sticky summary, batch `createReview`, routing, idempotency tags + retries | Same core posting (sticky summary, batching, routing, incremental dedup); no idempotency/retry layer |
-| Incremental dedup | IoU overlap vs. previously-posted bot comments (matched by login) | IoU overlap vs. previously-posted **Bot-type** comments |
+| Incremental dedup | IoU overlap vs. previously-posted bot comments (matched by login) | IoU overlap **plus content-based similarity** vs. previously-posted **Bot-type** comments |
 | Bot commands | — | `@bot review` / `@bot fix` / chat |
 | Auto-fix | — | `@bot fix` opens a fix PR |
 | PR composition | — | Optional PR title/body rewrite (`compose-pr`) |
@@ -145,8 +145,10 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 | `bot-mention` | — | `@opencode-review` | Mention trigger for comments |
 | `compose-pr` | — | `false` | `"true"` to compose/update PR title and body |
 | `sticky-summary` | — | `true` | Update the summary review body in place across runs |
-| `incremental` | — | `false` | Skip inline comments overlapping previously-posted bot comments |
+| `incremental` | — | `true` | Skip inline comments that duplicate previously-posted bot comments (same line/range overlap or similar content) |
 | `incremental-overlap-threshold` | — | `0.6` | IoU threshold in `(0, 1]` for multi-line duplicate detection |
+| `content-based-deduplication` | — | `true` | Skip inline comments whose content matches a previously-posted bot comment on the same path, even when the lines differ |
+| `content-similarity-threshold` | — | `0.8` | Jaccard similarity threshold in `(0, 1]` for same-path content duplicates |
 | `review-comment-batch-size` | — | `50` | Max inline comments per `createReview` call |
 | `route-severity-below` | — | *(unset)* | Route findings at-or-below this severity to the summary |
 | `route-categories` | — | *(unset)* | Comma-separated categories routed to the summary |
@@ -162,7 +164,10 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 Findings are split into **inline comments** (RIGHT-side findings whose line range falls in the diff) and a **summary** (everything else, rendered into the review body). Posting is controlled by these inputs:
 
 - **`sticky-summary`** — the review carrying the summary is located by its marker (`<!-- ocr-review-summary -->`) and its body is **updated in place** on subsequent runs instead of posting a fresh summary review. Inline comments always go to fresh reviews, because GitHub does not allow adding comments to an existing review. On the first run, body + comments are posted in a single review.
-- **`incremental`** — skips inline comments that overlap comments the bot already posted: the same single line, or multi-line ranges whose intersection-over-union exceeds `incremental-overlap-threshold`. Only comments from **Bot-type** users count as history (this is what GitHub App tokens post as); single-line vs. multi-line spans are never considered duplicates.
+- **`incremental`** (on by default) — skips inline comments that duplicate comments the bot already posted. A comment is a duplicate when it targets the same path as a previous Bot-type comment **and** either:
+  - its line span overlaps (same single line, or multi-line ranges whose intersection-over-union exceeds `incremental-overlap-threshold`), **or**
+  - its content matches (with `content-based-deduplication`, normalized exact match or token Jaccard similarity at-or-above `content-similarity-threshold`), so the same concern is not re-posted even if the LLM reports it on a different line.
+  Only comments from **Bot-type** users count as history (this is what GitHub App tokens post as); single-line vs. multi-line spans are never considered line-duplicates.
 - **`review-comment-batch-size`** — maximum number of inline comments packed into one `createReview` call. Larger reviews are split deterministically (path → start line → end line → original order), so reruns produce identical batches and the summary travels on the first batch.
 - **`route-severity-below` / `route-categories`** — route findings to the summary instead of inline: findings whose severity is at-or-below the configured severity (e.g. `low` routes `medium` and `low`) or whose category matches the comma-separated list. Routing is fail-open: unknown/empty values disable it and a finding is never dropped.
 
@@ -179,9 +184,9 @@ Findings are split into **inline comments** (RIGHT-side findings whose line rang
 
 ## Limitations
 
-- The workflow triggers on PR **`opened`**, **`synchronize`**, and **`reopened`**, and on created comments. Each PR event posts a fresh inline review; set `incremental: "true"` if duplicate inline comments should be suppressed.
+- The workflow triggers on PR **`opened`**, **`synchronize`**, and **`reopened`**, and on created comments. Each PR event posts a fresh inline review; duplicate inline comments are suppressed by `incremental` (on by default) plus content-based dedup.
 - **Sticky summaries live in the review body**, not a pinned issue comment: when new inline comments arrive, a fresh review is posted alongside and the summary review is updated — the timeline therefore keeps multiple reviews, and the summary is not pinned at the top of the conversation.
-- **Incremental dedup is Bot-type based**: comments posted by a non-Bot user are never treated as duplicates, regardless of content.
+- **Incremental dedup is Bot-type based**: comments posted by a non-Bot user are never treated as duplicates, regardless of content. Content-based dedup compares posted bodies, so it cannot detect a duplicate concern that the LLM reworded entirely (different vocabulary).
 - The standard `pull_request` workflow cannot use repository secrets for fork PRs. As a result, automatic reviews are supported for PRs from the same repository; supporting fork PRs requires a separate, security-reviewed `pull_request_target` design.
 - The `runner-ref` input pins which version of the runner CLI is used; pin to a release tag for stability.
 

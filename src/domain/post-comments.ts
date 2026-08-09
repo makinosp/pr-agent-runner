@@ -197,6 +197,115 @@ export const overlapsHistory = (
   return false;
 };
 
+// ---- Content-based deduplication ----
+
+/** Default Jaccard threshold for content-based duplicate detection. */
+export const DEFAULT_CONTENT_SIMILARITY_THRESHOLD = 0.8;
+
+/** Normalize comment text so near-identical wording compares equal: drop the
+ * summary marker, strip common Markdown decoration, collapse whitespace, and
+ * lowercase. Used to compare posted bodies that differ only in formatting. */
+export const normalizeContent = (text: string | null | undefined): string =>
+  String(text ?? '')
+    .replace(SUMMARY_MARKER, '')
+    .replace(/[*_`#>[\]().]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+/** Tokenize normalized text into a word set (empty tokens are dropped). */
+const tokenize = (text: string): ReadonlySet<string> =>
+  new Set(text.split(' ').filter((t) => t.length > 0));
+
+/** Jaccard coefficient between two token sets; 1 when both sets are empty. */
+export const jaccardSimilarity = (a: ReadonlySet<string>, b: ReadonlySet<string>): number => {
+  if (a.size === 0 && b.size === 0) return 1;
+  if (a.size === 0 || b.size === 0) return 0;
+  let intersection = 0;
+  for (const token of a) {
+    if (b.has(token)) intersection += 1;
+  }
+  const union = a.size + b.size - intersection;
+  return union === 0 ? 1 : intersection / union;
+};
+
+/** Clamp/validate the caller-provided content threshold to a sane (0, 1]
+ * number, falling back to the default when missing, NaN, or out of range. */
+export const resolveContentThreshold = (threshold: string | number | null | undefined): number => {
+  const n = Number(threshold);
+  return Number.isFinite(n) && n > 0 && n <= 1 ? n : DEFAULT_CONTENT_SIMILARITY_THRESHOLD;
+};
+
+/** Content-level duplicate test: two bodies are duplicates when their
+ * normalized forms match exactly, or their token Jaccard similarity is
+ * at-or-above `threshold`. Empty/whitespace-only bodies never match. */
+export const isDuplicateContent = (
+  current: string | null | undefined,
+  existing: string | null | undefined,
+  threshold: string | number | null | undefined = DEFAULT_CONTENT_SIMILARITY_THRESHOLD,
+): boolean => {
+  const t = resolveContentThreshold(threshold);
+  const cur = normalizeContent(current);
+  const other = normalizeContent(existing);
+  if (cur.length === 0 || other.length === 0) return false;
+  if (cur === other) return true;
+  return jaccardSimilarity(tokenize(cur), tokenize(other)) >= t;
+};
+
+/** Options controlling the combined (line + content) duplicate test. */
+export interface DedupeOptions {
+  /** IoU threshold for the multi-line overlap rule (default: 0.6). */
+  readonly lineThreshold?: string | number | null;
+  /** Enable the content-similarity rule (default: true). */
+  readonly content?: boolean;
+  /** Jaccard threshold for the content rule (default: 0.8). */
+  readonly contentThreshold?: string | number | null;
+}
+
+/**
+ * Decide whether a candidate comment duplicates any entry in `history`. A
+ * comment is a duplicate when it targets the same path as a history comment
+ * AND either:
+ *   1. line-based overlap — same single line, or multi-line IoU above
+ *      `lineThreshold` (the pre-existing incremental rule); or
+ *   2. content-based similarity — normalized exact match or Jaccard
+ *      at-or-above `contentThreshold` against the history body, when content
+ *      dedup is enabled.
+ * The rules are OR-ed: different lines with the same wording are caught by the
+ * content rule; the same line with different wording is caught by the line
+ * rule. Only RIGHT-side history comments are considered.
+ */
+export const isDuplicateComment = (
+  comment: {
+    readonly path: string;
+    readonly body?: string | null;
+    readonly start_line?: number | string | null;
+    readonly line?: number | string | null;
+    readonly end_line?: number | string | null;
+    readonly side?: string | null;
+  },
+  history: ReadonlyArray<{
+    readonly path: string;
+    readonly body?: string | null;
+    readonly start_line?: number | string | null;
+    readonly line?: number | string | null;
+    readonly end_line?: number | string | null;
+    readonly side?: string | null;
+  }>,
+  options: DedupeOptions = {},
+): boolean => {
+  const lineThreshold = resolveThreshold(options.lineThreshold);
+  const contentEnabled = options.content !== false;
+  const contentThreshold = resolveContentThreshold(options.contentThreshold);
+  for (const h of history) {
+    if (h.path !== comment.path) continue;
+    if (h.side && h.side !== 'RIGHT') continue;
+    if (overlapsHistory(comment, [h], lineThreshold)) return true;
+    if (contentEnabled && isDuplicateContent(comment.body, h.body, contentThreshold)) return true;
+  }
+  return false;
+};
+
 // ---- Routing (severity/category → summary) ----
 
 /** Sentinel policy object: "do not route anything". Returned by buildRoutePolicy

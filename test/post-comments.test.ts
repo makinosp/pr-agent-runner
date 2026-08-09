@@ -3,15 +3,21 @@ import { describe, test } from 'node:test';
 import {
   CATEGORIES,
   DEFAULT_BATCH_SIZE,
+  DEFAULT_CONTENT_SIMILARITY_THRESHOLD,
   DEFAULT_OVERLAP_THRESHOLD,
   NO_ROUTING,
   SEVERITY_RANK,
   buildRoutePolicy,
   chunkArray,
   isBotComment,
+  isDuplicateComment,
+  isDuplicateContent,
+  jaccardSimilarity,
   lineSpan,
+  normalizeContent,
   overlapsHistory,
   resolveBatchSize,
+  resolveContentThreshold,
   resolveThreshold,
   sameCommentSpan,
   shouldRoute,
@@ -198,6 +204,125 @@ describe('isBotComment', () => {
     expect(isBotComment({})).toBe(false);
     expect(isBotComment(null)).toBe(false);
     expect(isBotComment(undefined)).toBe(false);
+  });
+});
+
+describe('normalizeContent', () => {
+  test('lowercases and collapses whitespace', () => {
+    expect(normalizeContent('  Foo   Bar\nBaz ')).toBe('foo bar baz');
+  });
+
+  test('strips markdown decoration', () => {
+    expect(normalizeContent('**Foo** `bar` [baz]')).toBe('foo bar baz');
+  });
+
+  test('drops the summary marker', () => {
+    expect(normalizeContent('<!-- ocr-review-summary -->\nFoo')).toBe('foo');
+  });
+
+  test('handles null/undefined/empty', () => {
+    expect(normalizeContent(null)).toBe('');
+    expect(normalizeContent(undefined)).toBe('');
+    expect(normalizeContent('')).toBe('');
+  });
+});
+
+describe('jaccardSimilarity', () => {
+  test('returns 1 for equal non-empty sets', () => {
+    expect(jaccardSimilarity(new Set(['a', 'b']), new Set(['a', 'b']))).toBe(1);
+  });
+
+  test('returns 1 for two empty sets', () => {
+    expect(jaccardSimilarity(new Set(), new Set())).toBe(1);
+  });
+
+  test('returns 0 when one set is empty and the other is not', () => {
+    expect(jaccardSimilarity(new Set(), new Set(['a']))).toBe(0);
+  });
+
+  test('computes the intersection-over-union ratio', () => {
+    // a: {a,b,c}, b: {b,c,d} -> intersection 2, union 4 -> 0.5
+    expect(jaccardSimilarity(new Set(['a', 'b', 'c']), new Set(['b', 'c', 'd']))).toBe(0.5);
+  });
+});
+
+describe('resolveContentThreshold', () => {
+  test('accepts values in (0, 1]', () => {
+    expect(resolveContentThreshold('0.5')).toBe(0.5);
+    expect(resolveContentThreshold(1)).toBe(1);
+  });
+
+  test('falls back to the default for malformed values', () => {
+    expect(resolveContentThreshold('0')).toBe(DEFAULT_CONTENT_SIMILARITY_THRESHOLD);
+    expect(resolveContentThreshold('-0.1')).toBe(DEFAULT_CONTENT_SIMILARITY_THRESHOLD);
+    expect(resolveContentThreshold('1.5')).toBe(DEFAULT_CONTENT_SIMILARITY_THRESHOLD);
+    expect(resolveContentThreshold('abc')).toBe(DEFAULT_CONTENT_SIMILARITY_THRESHOLD);
+    expect(resolveContentThreshold(undefined)).toBe(DEFAULT_CONTENT_SIMILARITY_THRESHOLD);
+  });
+});
+
+describe('isDuplicateContent', () => {
+  test('normalized exact match is a duplicate', () => {
+    expect(isDuplicateContent('**Foo** bar', 'foo `bar`')).toBe(true);
+  });
+
+  test('high Jaccard similarity above the threshold is a duplicate', () => {
+    // share 4 of 5 tokens -> Jaccard = 0.8 >= 0.7
+    expect(isDuplicateContent('the quick brown fox', 'the quick brown fox jumped', 0.7)).toBe(true);
+  });
+
+  test('low similarity is not a duplicate', () => {
+    expect(isDuplicateContent('the quick brown fox', 'completely unrelated sentence', 0.8)).toBe(false);
+  });
+
+  test('empty or whitespace-only bodies never match', () => {
+    expect(isDuplicateContent('', 'foo')).toBe(false);
+    expect(isDuplicateContent('  ', 'foo')).toBe(false);
+    expect(isDuplicateContent('foo', null)).toBe(false);
+    expect(isDuplicateContent(null, null)).toBe(false);
+  });
+});
+
+describe('isDuplicateComment', () => {
+  const hist = (path: string, overrides: Record<string, unknown> = {}) => ({
+    path,
+    side: 'RIGHT',
+    body: 'same wording',
+    start_line: null,
+    line: 10,
+    ...overrides,
+  });
+
+  test('line overlap alone is a duplicate even with different content', () => {
+    const comment = { path: 'a.ts', body: 'totally different', line: 10 };
+    expect(isDuplicateComment(comment, [hist('a.ts')])).toBe(true);
+  });
+
+  test('content match on a different line is a duplicate', () => {
+    const comment = { path: 'a.ts', body: 'same wording', line: 99 };
+    expect(isDuplicateComment(comment, [hist('a.ts', { line: 10 })])).toBe(true);
+  });
+
+  test('different path is never a duplicate', () => {
+    const comment = { path: 'b.ts', body: 'same wording', line: 99 };
+    expect(isDuplicateComment(comment, [hist('a.ts')])).toBe(false);
+  });
+
+  test('different content and different lines are not duplicates', () => {
+    const comment = { path: 'a.ts', body: 'unrelated text here', line: 99 };
+    expect(isDuplicateComment(comment, [hist('a.ts', { line: 10, body: 'very different wording' })])).toBe(false);
+  });
+
+  test('content rule can be disabled (line overlap only)', () => {
+    const comment = { path: 'a.ts', body: 'same wording', line: 99 };
+    expect(isDuplicateComment(comment, [hist('a.ts')], { content: false })).toBe(false);
+    // ...while a real line overlap is still caught.
+    expect(isDuplicateComment({ ...comment, line: 10 }, [hist('a.ts')], { content: false })).toBe(true);
+  });
+
+  test('LEFT-side history comments are ignored', () => {
+    const comment = { path: 'a.ts', body: 'same wording', line: 99 };
+    expect(isDuplicateComment(comment, [hist('a.ts', { side: 'LEFT' })])).toBe(false);
   });
 });
 

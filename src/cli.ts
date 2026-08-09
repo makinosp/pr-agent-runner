@@ -52,6 +52,8 @@ interface ReviewCliConfig {
   readonly stickySummary: boolean;
   readonly incremental: boolean;
   readonly incrementalOverlapThreshold: string;
+  readonly contentBasedDeduplication: boolean;
+  readonly contentSimilarityThreshold: string;
   readonly batchSize: string;
   readonly routeSeverityBelow: string;
   readonly routeCategories: string;
@@ -89,6 +91,8 @@ const parseReviewOptions = (env: NodeJS.ProcessEnv): ReviewOptions => ({
   sticky: env.REVIEW_STICKY_SUMMARY !== 'false',
   incremental: env.REVIEW_INCREMENTAL === 'true',
   incrementalOverlapThreshold: env.REVIEW_INCREMENTAL_OVERLAP_THRESHOLD,
+  contentBasedDeduplication: env.REVIEW_CONTENT_BASED_DEDUPLICATION !== 'false',
+  contentSimilarityThreshold: env.REVIEW_CONTENT_SIMILARITY_THRESHOLD,
   batchSize: env.REVIEW_COMMENT_BATCH_SIZE,
   routeSeverityBelow: env.REVIEW_ROUTE_SEVERITY_BELOW ?? '',
   routeCategories: env.REVIEW_ROUTE_CATEGORIES ?? '',
@@ -133,6 +137,8 @@ export const parseConfig = (env: NodeJS.ProcessEnv): CliConfig => {
     stickySummary: options.sticky ?? true,
     incremental: options.incremental ?? false,
     incrementalOverlapThreshold: String(options.incrementalOverlapThreshold ?? ''),
+    contentBasedDeduplication: options.contentBasedDeduplication ?? true,
+    contentSimilarityThreshold: String(options.contentSimilarityThreshold ?? ''),
     batchSize: String(options.batchSize ?? ''),
     routeSeverityBelow: options.routeSeverityBelow ?? '',
     routeCategories: options.routeCategories ?? '',
@@ -192,6 +198,8 @@ export const runReview = async (config: ReviewCliConfig, deps: CliDeps = {}): Pr
         sticky: config.stickySummary,
         incremental: config.incremental,
         incrementalOverlapThreshold: config.incrementalOverlapThreshold,
+        contentBasedDeduplication: config.contentBasedDeduplication,
+        contentSimilarityThreshold: config.contentSimilarityThreshold,
         batchSize: config.batchSize,
         routeSeverityBelow: config.routeSeverityBelow,
         routeCategories: config.routeCategories,
