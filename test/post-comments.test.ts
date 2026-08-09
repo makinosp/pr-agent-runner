@@ -89,12 +89,20 @@ describe('lineSpan', () => {
     [string, { line?: number | null; start_line?: number | null }, { start: number; end: number; multiline: boolean } | null]
   > = [
       ['resolves a single-line comment from line', { line: 3 }, { start: 3, end: 3, multiline: false }],
-      ['resolves a multi-line comment from start_line and line', { start_line: 2, line: 5 }, { start: 2, end: 5, multiline: true }],
+      [
+        'resolves a multi-line comment from start_line and line',
+        { start_line: 2, line: 5 },
+        { start: 2, end: 5, multiline: true },
+      ],
       ['treats start_line === line as single-line', { start_line: 3, line: 3 }, { start: 3, end: 3, multiline: false }],
       ['returns null when no line can be resolved', {}, null],
       ['returns null when start_line is 0', { start_line: 0 }, null],
       ['returns null when line is null', { line: null }, null],
-      ['normalizes reversed start/end to ascending order', { start_line: 8, line: 3 }, { start: 3, end: 8, multiline: true }],
+      [
+        'normalizes reversed start/end to ascending order',
+        { start_line: 8, line: 3 },
+        { start: 3, end: 8, multiline: true },
+      ],
     ];
 
   for (const [name, comment, expected] of lineSpanCases) {

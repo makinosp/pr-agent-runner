@@ -66,13 +66,21 @@ inputs:
     required: false
     default: "true"
   incremental:
-    description: "Skip inline comments that overlap previously-posted bot comments"
+    description: "Skip inline comments that duplicate previously-posted bot comments (same line/range overlap or similar content)"
     required: false
-    default: "false"
+    default: "true"
   incremental-overlap-threshold:
     description: "IoU threshold in (0, 1] used to treat multi-line comments as duplicates in incremental mode"
     required: false
     default: "0.6"
+  content-based-deduplication:
+    description: "Skip inline comments whose content matches a previously-posted bot comment on the same path, even when the lines differ"
+    required: false
+    default: "true"
+  content-similarity-threshold:
+    description: "Jaccard similarity threshold in (0, 1] used to treat same-path comments with similar wording as duplicates"
+    required: false
+    default: "0.8"
   review-comment-batch-size:
     description: "Maximum number of inline comments packed into a single createReview call"
     required: false
