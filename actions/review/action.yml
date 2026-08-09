@@ -1,4 +1,4 @@
-name: 'PR Agent Runner'
+name: "PR Agent Runner"
 description: >
   Runs OpenCodeReview (OCR) on a pull request and posts review comments.
   Triggered on PR open or when a PR comment mentions the configured bot
@@ -7,121 +7,121 @@ description: >
   and posts results.
 inputs:
   app-client-id:
-    description: 'GitHub App client ID for token generation'
+    description: "GitHub App client ID for token generation"
     required: true
   app-private-key:
-    description: 'GitHub App private key for token generation'
+    description: "GitHub App private key for token generation"
     required: true
   ocr-llm-url:
-    description: 'LLM endpoint URL used by OCR'
+    description: "LLM endpoint URL used by OCR"
     required: true
   ocr-llm-token:
-    description: 'LLM API token used by OCR'
+    description: "LLM API token used by OCR"
     required: true
   ocr-llm-model:
-    description: 'LLM model name used by OCR'
+    description: "LLM model name used by OCR"
     required: true
   node-version:
-    description: 'Node.js version'
+    description: "Node.js version"
     required: false
-    default: '24'
+    default: "24"
   pnpm-version:
-    description: 'pnpm version'
+    description: "pnpm version"
     required: false
-    default: '11'
+    default: "11"
   fetch-depth:
-    description: 'Git fetch depth for the consumer repo checkout'
+    description: "Git fetch depth for the consumer repo checkout"
     required: false
-    default: '0'
+    default: "0"
   ocr-version:
-    description: 'OpenCodeReview CLI version to install'
+    description: "OpenCodeReview CLI version to install"
     required: false
-    default: '1.7.16'
+    default: "1.7.16"
   ocr-llm-max-tokens:
-    description: 'LLM max tokens (optional)'
+    description: "LLM max tokens (optional)"
     required: false
-    default: ''
+    default: ""
   ocr-use-anthropic:
     description: "Set 'true' to use the Anthropic protocol (optional)"
     required: false
-    default: ''
+    default: ""
   ocr-llm-protocol:
-    description: 'LLM protocol: anthropic | openai (optional, overrides ocr-use-anthropic)'
+    description: "LLM protocol: anthropic | openai (optional, overrides ocr-use-anthropic)"
     required: false
-    default: ''
+    default: ""
   ocr-language:
-    description: 'Review language'
+    description: "Review language"
     required: false
-    default: 'English'
+    default: "English"
   bot-mention:
     description: "Bot mention trigger, e.g. '@my-bot'"
     required: false
-    default: '@opencode-review'
+    default: "@opencode-review"
   compose-pr:
     description: "Set 'true' to compose and update the PR title and body"
     required: false
-    default: 'false'
+    default: "false"
   sticky-summary:
     description: "Update the review summary in place across runs ('true') or post a fresh review each run ('false')"
     required: false
-    default: 'true'
+    default: "true"
   incremental:
-    description: 'Skip inline comments that duplicate previously-posted bot comments (same line/range overlap or similar content)'
+    description: "Skip inline comments that duplicate previously-posted bot comments (same line/range overlap or similar content)"
     required: false
-    default: 'true'
+    default: "true"
   incremental-overlap-threshold:
-    description: 'IoU threshold in (0, 1] used to treat multi-line comments as duplicates in incremental mode'
+    description: "IoU threshold in (0, 1] used to treat multi-line comments as duplicates in incremental mode"
     required: false
-    default: '0.6'
+    default: "0.6"
   content-based-deduplication:
-    description: 'Skip inline comments whose content matches a previously-posted bot comment on the same path, even when the lines differ'
+    description: "Skip inline comments whose content matches a previously-posted bot comment on the same path, even when the lines differ"
     required: false
-    default: 'true'
+    default: "true"
   content-similarity-threshold:
-    description: 'Jaccard similarity threshold in (0, 1] used to treat same-path comments with similar wording as duplicates'
+    description: "Jaccard similarity threshold in (0, 1] used to treat same-path comments with similar wording as duplicates"
     required: false
-    default: '0.8'
+    default: "0.8"
   review-comment-batch-size:
-    description: 'Maximum number of inline comments packed into a single createReview call'
+    description: "Maximum number of inline comments packed into a single createReview call"
     required: false
-    default: '50'
+    default: "50"
   route-severity-below:
-    description: 'Route findings at or below this severity to the summary (critical|high|medium|low; empty disables)'
+    description: "Route findings at or below this severity to the summary (critical|high|medium|low; empty disables)"
     required: false
-    default: ''
+    default: ""
   route-categories:
-    description: 'Comma-separated categories to route to the summary (empty disables)'
+    description: "Comma-separated categories to route to the summary (empty disables)"
     required: false
-    default: ''
+    default: ""
   runner-ref:
-    description: 'Git ref of the runner repository to use for the runner CLI'
+    description: "Git ref of the runner repository to use for the runner CLI"
     required: false
-    default: 'main'
+    default: "main"
   runner-repository:
-    description: 'Repository that hosts the runner CLI (owner/name)'
+    description: "Repository that hosts the runner CLI (owner/name)"
     required: false
-    default: 'makinosp/pr-agent-runner'
+    default: "makinosp/pr-agent-runner"
 outputs:
   comments_total:
-    description: 'Total number of findings processed'
+    description: "Total number of findings processed"
     value: ${{ steps.review.outputs.comments_total }}
   comments_inline:
-    description: 'Number of inline comments posted'
+    description: "Number of inline comments posted"
     value: ${{ steps.review.outputs.comments_inline }}
   comments_skipped:
-    description: 'Number of inline comments skipped as overlapping'
+    description: "Number of inline comments skipped as overlapping"
     value: ${{ steps.review.outputs.comments_skipped }}
   comments_routed:
-    description: 'Number of findings routed to the summary'
+    description: "Number of findings routed to the summary"
     value: ${{ steps.review.outputs.comments_routed }}
   comments_failed:
-    description: 'Number of comments that failed to post'
+    description: "Number of comments that failed to post"
     value: ${{ steps.review.outputs.comments_failed }}
   summary_comment_url:
-    description: 'URL of the review carrying the summary'
+    description: "URL of the review carrying the summary"
     value: ${{ steps.review.outputs.summary_comment_url }}
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - uses: actions/setup-node@v7
       with:
