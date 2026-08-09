@@ -42,10 +42,10 @@ export const CATEGORIES: readonly Category[] = [
   'other',
 ];
 
-export const isSeverity = (value: string): value is Severity =>
+const isSeverity = (value: string): value is Severity =>
   (SEVERITY_RANK as Readonly<Record<string, number | undefined>>)[value] !== undefined;
 
-export const isCategory = (value: string): value is Category =>
+const isCategory = (value: string): value is Category =>
   (CATEGORIES as readonly string[]).includes(value);
 
 // ---- Batch sizing + deterministic ordering ----
@@ -59,7 +59,7 @@ export const resolveBatchSize = (raw: string | number | null | undefined): numbe
 };
 
 /** Minimal shape shared by sortable comment-like objects. */
-export interface SortableComment {
+interface SortableComment {
   readonly path: string;
   readonly start_line?: number | null;
   readonly end_line?: number | null;
@@ -104,7 +104,7 @@ const num = (v: number | string | null | undefined): number | null => {
   return Number.isFinite(n) && n >= 1 ? n : null;
 };
 
-export interface LineSpan {
+interface LineSpan {
   readonly start: number;
   readonly end: number;
   readonly multiline: boolean;
@@ -317,7 +317,7 @@ export const NO_ROUTING: RoutePolicy = Object.freeze({
   categories: new Set<string>(),
 });
 
-export interface RoutePolicy {
+interface RoutePolicy {
   readonly routeBySeverity: boolean;
   /** Rank of the threshold severity; -1 when severity routing is disabled. */
   readonly severityRank: number;
@@ -326,7 +326,7 @@ export interface RoutePolicy {
   readonly categories: ReadonlySet<string>;
 }
 
-export type RouteResult = { readonly routed: true; readonly reason: string } | { readonly routed: false };
+type RouteResult = { readonly routed: true; readonly reason: string } | { readonly routed: false };
 
 /** Parse the routing policy from the raw inputs. Unknown/empty values disable
  * that routing dimension (fail-open: an unknown threshold never routes).

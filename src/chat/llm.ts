@@ -84,11 +84,13 @@ export const retryWithBackoff = async <T>(
 // Improved error messages
 const createLlmError = (url: string, model: string, status?: number, responseBody?: string): Error => {
   const detail =
-    typeof responseBody === 'string' && responseBody.trim() !== '' ? `\nResponse body: ${responseBody.slice(0, 500)}` : '';
+    typeof responseBody === 'string' && responseBody.trim() !== ''
+      ? `\nResponse body: ${responseBody.slice(0, 500)}`
+      : '';
   return new Error(
     `LLM API failed for ${model} at ${url}\n` +
-    `Status: ${status || 'unknown'}\n` +
-    `Please check your OCR_LLM_URL and OCR_LLM_TOKEN environment variables.${detail}`,
+      `Status: ${status || 'unknown'}\n` +
+      `Please check your OCR_LLM_URL and OCR_LLM_TOKEN environment variables.${detail}`,
   );
 };
 

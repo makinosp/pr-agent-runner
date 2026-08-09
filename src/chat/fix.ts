@@ -1,5 +1,5 @@
 import type { Octokit } from '@octokit/rest';
-import type { RepoRef } from '../schemas/common.ts';
+import type { RepoRef } from '../types.ts';
 import type { Finding } from '../schemas/finding.ts';
 import { isInlineRightFinding } from '../domain/reviewable-lines.ts';
 import { resolveEndLine } from '../schemas/finding.ts';
@@ -59,7 +59,10 @@ export const applyReplacement = (
  */
 const sanitizeBranchSegment = (mention: string): string => {
   const name = mention.startsWith('@') ? mention.slice(1) : mention;
-  const sanitized = name.replace(/[^A-Za-z0-9._-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  const sanitized = name
+    .replace(/[^A-Za-z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
   return sanitized || 'bot';
 };
 

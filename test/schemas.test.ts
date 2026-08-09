@@ -148,4 +148,3 @@ describe('findingsContainerSchema', () => {
     expect(result.success).toBe(true);
   });
 });
-

@@ -8,7 +8,12 @@ describe('parseMention', () => {
     ['returns null when mention is absent', 'hello world', null, ''],
     ['detects review command', '@bg-onigiri review', 'review', ''],
     ['detects fix command', '@bg-onigiri fix', 'fix', ''],
-    ['treats review with extra text as review command', '@bg-onigiri review please focus on auth', 'review', 'please focus on auth'],
+    [
+      'treats review with extra text as review command',
+      '@bg-onigiri review please focus on auth',
+      'review',
+      'please focus on auth',
+    ],
     ['treats fix with extra text as fix command', '@bg-onigiri fix the auth bug', 'fix', 'the auth bug'],
     ['treats non-review text as chat', '@bg-onigiri この関数の意図を教えて', 'chat', 'この関数の意図を教えて'],
     ['strips mention from middle of body', 'thanks @bg-onigiri why use map here?', 'chat', 'thanks  why use map here?'],
@@ -87,4 +92,3 @@ describe('fetchPrDiffContext', () => {
     expect(hasStandaloneFence).toBe(false);
   });
 });
-

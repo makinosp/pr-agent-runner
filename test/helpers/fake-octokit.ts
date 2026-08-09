@@ -7,7 +7,7 @@
 import type { RestEndpointMethodTypes } from '@octokit/rest';
 
 /** Optional seed data returned by `listReviews` / `listReviewComments`. */
-export interface FakeOctokitSeed {
+interface FakeOctokitSeed {
   reviews?: Array<Record<string, unknown>>;
   reviewComments?: Array<Record<string, unknown>>;
 }
@@ -21,7 +21,7 @@ type FakePullData = {
   body?: string;
 };
 
-export type FakeOctokitRest = {
+type FakeOctokitRest = {
   pulls: {
     get: () => Promise<{ data: FakePullData }>;
     update: (params: Record<string, unknown>) => Promise<{ data: unknown }>;
@@ -45,12 +45,12 @@ export type FakeOctokitRest = {
   };
 };
 
-export type FakeOctokit = {
+type FakeOctokit = {
   rest: FakeOctokitRest;
   paginate: (method: unknown, params: Record<string, unknown>) => Promise<OctokitFile[]>;
 };
 
-export interface OctokitCaptures {
+interface OctokitCaptures {
   reviews: Array<Record<string, unknown>>;
   comments: Array<Record<string, unknown>>;
   prUpdates: Array<Record<string, unknown>>;
