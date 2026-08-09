@@ -1,7 +1,11 @@
-import type { Octokit, RestEndpointMethodTypes } from '@octokit/rest';
+import type { Octokit } from '@octokit/rest';
 import type { Finding } from '../schemas/finding.ts';
 import { resolveEndLine } from '../schemas/finding.ts';
-import { buildReviewableRightLineMap, splitFindingsForReview } from '../domain/reviewable-lines.ts';
+import {
+  buildReviewableRightLineMap,
+  splitFindingsForReview,
+  type InlineFinding,
+} from '../domain/reviewable-lines.ts';
 import {
   SUMMARY_MARKER,
   buildRoutePolicy,
@@ -14,43 +18,9 @@ import {
   sortCommentsDeterministically,
 } from '../domain/post-comments.ts';
 import { buildCommentBody } from './markdown.ts';
-import type { RepoRef } from '../schemas/common.ts';
-
-type RawComment = NonNullable<RestEndpointMethodTypes['pulls']['createReview']['parameters']['comments']>[number];
-type Comment = Partial<Pick<RawComment, 'position' | 'start_line' | 'start_side'>> & Required<Omit<RawComment, 'position' | 'start_line' | 'start_side'>>;
-type ReviewComment = RestEndpointMethodTypes['pulls']['listReviewComments']['response']['data'][number];
-type Review = RestEndpointMethodTypes['pulls']['listReviews']['response']['data'][number];
-
-/** Options controlling how findings are posted. Every field is optional;
- * defaults mirror the action inputs (sticky summary, no incremental filtering,
- * 50 comments per batch, no routing). */
-export interface ReviewOptions {
-  /** Update the summary review body in place across runs (default: true). */
-  readonly sticky?: boolean;
-  /** Skip inline comments overlapping previously-posted bot comments (default: false). */
-  readonly incremental?: boolean;
-  /** IoU threshold for multi-line overlap in incremental mode (default: 0.6). */
-  readonly incrementalOverlapThreshold?: string | number;
-  /** Max inline comments per createReview call (default: 50). */
-  readonly batchSize?: string | number;
-  /** Route findings at-or-below this severity to the summary (default: none). */
-  readonly routeSeverityBelow?: string;
-  /** Comma-separated categories routed to the summary (default: none). */
-  readonly routeCategories?: string;
-}
-
-export interface ReviewStats {
-  readonly total: number;
-  readonly inline: number;
-  readonly skipped: number;
-  readonly routed: number;
-  readonly failed: number;
-  readonly summaryUrl?: string;
-}
+import type { Comment, RepoRef, Review, ReviewComment, ReviewOptions, ReviewStats } from '../types.ts';
 
 const EMPTY_STATS: ReviewStats = { total: 0, inline: 0, skipped: 0, routed: 0, failed: 0 };
-
-type InlineFinding = Finding & { start_line: number };
 
 const toComment = (finding: InlineFinding): Comment => {
   const endLine = resolveEndLine(finding);

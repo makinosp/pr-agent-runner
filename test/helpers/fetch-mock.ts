@@ -7,14 +7,14 @@
  *   restore();
  */
 
-export interface FetchResponse {
+interface FetchResponse {
   status?: number;
   ok?: boolean;
   body: unknown;
   headers?: Record<string, string>;
 }
 
-export interface FetchCall {
+interface FetchCall {
   url: string;
   init: RequestInit;
 }
@@ -49,10 +49,7 @@ export const mockFetch = (responses: FetchResponse[]): { calls: FetchCall[]; res
  * Run `fn` with the global fetch mocked, restoring it afterwards.
  * Replaces the repetitive try/finally + mockFetch pattern in LLM tests.
  */
-export const withFetch = async <T>(
-  responses: FetchResponse[],
-  fn: (calls: FetchCall[]) => Promise<T>,
-): Promise<T> => {
+export const withFetch = async <T>(responses: FetchResponse[], fn: (calls: FetchCall[]) => Promise<T>): Promise<T> => {
   const { calls, restore } = mockFetch(responses);
   try {
     return await fn(calls);

@@ -181,4 +181,3 @@ describe('splitFindingsForReview', () => {
     expect(summaryComments).toHaveLength(1);
   });
 });
-

@@ -101,9 +101,7 @@ describe('chat', () => {
 
   test('throws on OpenAI non-ok response', async () => {
     await withFetch([{ status: 401, ok: false, body: { error: 'unauthorized' } }], async () => {
-      await expect(chat(openaiConfig, messages)).rejects.toThrow(
-        /LLM API failed for gpt-4o at[\s\S]*Status: 401/,
-      );
+      await expect(chat(openaiConfig, messages)).rejects.toThrow(/LLM API failed for gpt-4o at[\s\S]*Status: 401/);
     });
   });
 
@@ -196,4 +194,3 @@ describe('retryWithBackoff', () => {
     expect(err.message).toMatch(/rate limited/);
   });
 });
-

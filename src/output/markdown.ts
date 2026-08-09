@@ -31,14 +31,8 @@ export const escapeMarkdown = (text?: string): string => {
     .replace(/\[/g, '\\[')
     .replace(/\]/g, '\\]');
 
-  result = result.replace(
-    new RegExp(`${SENTINEL}CB(\\d+)${SENTINEL}`, 'g'),
-    (_, i) => codeBlocks[Number(i)],
-  );
-  result = result.replace(
-    new RegExp(`${SENTINEL}IC(\\d+)${SENTINEL}`, 'g'),
-    (_, i) => inlineCodes[Number(i)],
-  );
+  result = result.replace(new RegExp(`${SENTINEL}CB(\\d+)${SENTINEL}`, 'g'), (_, i) => codeBlocks[Number(i)]);
+  result = result.replace(new RegExp(`${SENTINEL}IC(\\d+)${SENTINEL}`, 'g'), (_, i) => inlineCodes[Number(i)]);
 
   return result;
 };

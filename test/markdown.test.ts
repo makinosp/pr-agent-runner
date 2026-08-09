@@ -65,10 +65,14 @@ describe('buildCommentBody', () => {
 
   test('keeps code formatting in content and suggestion', () => {
     const body = buildCommentBody(
-      commentBodyFinding({ content: 'use `code` here', suggestion: 'try *bold*', category: 'security', severity: 'critical' }),
+      commentBodyFinding({
+        content: 'use `code` here',
+        suggestion: 'try *bold*',
+        category: 'security',
+        severity: 'critical',
+      }),
     );
     expect(body).toMatch(/use `code` here/);
     expect(body).toMatch(/Suggestion:\n```\ntry \*bold\*\n```/);
   });
 });
-

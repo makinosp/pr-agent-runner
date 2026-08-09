@@ -67,7 +67,13 @@ describe('answerChat', () => {
     try {
       const captures = createCaptures();
       const octokit = makeFakeOctokit([{ filename: 'src/a.ts', patch: '@@ -1 +1 @@\n-old\n+new' }], captures);
-      const answer = await answerChat(toOctokit(octokit), fakeConfig, { owner: 'o', repo: 'r' }, fakePr, 'Is this correct?');
+      const answer = await answerChat(
+        toOctokit(octokit),
+        fakeConfig,
+        { owner: 'o', repo: 'r' },
+        fakePr,
+        'Is this correct?',
+      );
       expect(answer).toBe('The code looks good.');
       expect(calls).toHaveLength(1);
       const body = JSON.parse(calls[0].init.body as string) as { messages: Array<{ role: string; content: string }> };
@@ -90,7 +96,13 @@ describe('answerChat', () => {
     try {
       const captures = createCaptures();
       const octokit = makeFakeOctokit([{ filename: 'src/a.ts', patch: '@@ -1 +1 @@\n-old\n+new' }], captures);
-      const answer = await answerChat(toOctokit(octokit), anthropicConfig, { owner: 'o', repo: 'r' }, fakePr, 'check auth');
+      const answer = await answerChat(
+        toOctokit(octokit),
+        anthropicConfig,
+        { owner: 'o', repo: 'r' },
+        fakePr,
+        'check auth',
+      );
       expect(answer).toBe('Looks fine.');
       const body = JSON.parse(calls[0].init.body as string) as { system: string; messages: Array<{ role: string }> };
       expect(body.system).toMatch(/code review assistant/);
@@ -101,4 +113,3 @@ describe('answerChat', () => {
     }
   });
 });
-

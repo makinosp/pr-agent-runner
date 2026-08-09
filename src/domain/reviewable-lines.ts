@@ -5,7 +5,7 @@ import { resolveEndLine } from '../schemas/finding.ts';
 type OctokitFile = RestEndpointMethodTypes['pulls']['listFiles']['response']['data'][number];
 type ReviewFilePatch = Pick<OctokitFile, 'filename' | 'patch'>;
 type SplitFindingsResult = { inlineComments: InlineFinding[]; summaryComments: Finding[] };
-type InlineFinding = Finding & { start_line: number; side: 'RIGHT' };
+export type InlineFinding = Finding & { start_line: number; side: 'RIGHT' };
 type HunkAccumulator = { rightLine: number; inHunk: boolean; lines: Set<number> };
 
 const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
