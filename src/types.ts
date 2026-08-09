@@ -42,6 +42,8 @@ export interface ReviewCliConfig {
   readonly stickySummary: boolean;
   readonly incremental: boolean;
   readonly incrementalOverlapThreshold: string;
+  readonly contentBasedDeduplication: boolean;
+  readonly contentSimilarityThreshold: string;
   readonly batchSize: string;
   readonly routeSeverityBelow: string;
   readonly routeCategories: string;
@@ -96,6 +98,11 @@ export interface ReviewOptions {
   readonly incremental?: boolean;
   /** IoU threshold for multi-line overlap in incremental mode (default: 0.6). */
   readonly incrementalOverlapThreshold?: string | number;
+  /** Also skip inline comments whose content matches a previously-posted bot
+   * comment on the same path, even when the lines differ (default: true). */
+  readonly contentBasedDeduplication?: boolean;
+  /** Jaccard threshold in [0, 1] for content-based dedup (default: 0.8). */
+  readonly contentSimilarityThreshold?: string | number;
   /** Max inline comments per createReview call (default: 50). */
   readonly batchSize?: string | number;
   /** Route findings at-or-below this severity to the summary (default: none). */

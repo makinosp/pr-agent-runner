@@ -39,13 +39,13 @@ const withEnv = async <T>(env: Record<string, string>, fn: () => Promise<T>): Pr
 /** Fake execFile that answers the OCR/git command sequence with `findings`. */
 const fakeOcrExec =
   (findings: unknown): CliDeps['execFile'] =>
-    async (file, args) => {
-      if (file === 'git' && args[0] === 'merge-base') return { stdout: 'base123\n', stderr: '' };
-      if (file === 'ocr' && args[0] === 'review') {
-        return { stdout: JSON.stringify(findings), stderr: '' };
-      }
-      return { stdout: '', stderr: '' };
-    };
+  async (file, args) => {
+    if (file === 'git' && args[0] === 'merge-base') return { stdout: 'base123\n', stderr: '' };
+    if (file === 'ocr' && args[0] === 'review') {
+      return { stdout: JSON.stringify(findings), stderr: '' };
+    }
+    return { stdout: '', stderr: '' };
+  };
 
 const inlineFindingJson = (path: string, line: number) => ({
   path,
@@ -87,16 +87,8 @@ describe('parseConfig', () => {
   });
 
   const errorCases: ReadonlyArray<[string, NodeJS.ProcessEnv, RegExp]> = [
-    [
-      'throws when GITHUB_TOKEN is missing',
-      { GITHUB_REPOSITORY: 'owner/repo', PR_NUMBER: '1' },
-      /GITHUB_TOKEN/,
-    ],
-    [
-      'throws when GITHUB_REPOSITORY is missing',
-      { GITHUB_TOKEN: 'tok', PR_NUMBER: '1' },
-      /GITHUB_REPOSITORY/,
-    ],
+    ['throws when GITHUB_TOKEN is missing', { GITHUB_REPOSITORY: 'owner/repo', PR_NUMBER: '1' }, /GITHUB_TOKEN/],
+    ['throws when GITHUB_REPOSITORY is missing', { GITHUB_TOKEN: 'tok', PR_NUMBER: '1' }, /GITHUB_REPOSITORY/],
     [
       'throws when PR_NUMBER is invalid',
       { GITHUB_TOKEN: 'tok', GITHUB_REPOSITORY: 'owner/repo', PR_NUMBER: 'abc' },
@@ -161,20 +153,18 @@ describe('parseConfig', () => {
   });
 
   test('leaves baseRef/headSha undefined when env is absent', () => {
-    const config = asReview(
-      parseConfig({ GITHUB_TOKEN: 'tok', GITHUB_REPOSITORY: 'owner/repo', PR_NUMBER: '42' }),
-    );
+    const config = asReview(parseConfig({ GITHUB_TOKEN: 'tok', GITHUB_REPOSITORY: 'owner/repo', PR_NUMBER: '42' }));
     expect(config.baseRef).toBeUndefined();
     expect(config.headSha).toBeUndefined();
   });
 
   test('defaults the review posting options', () => {
-    const config = asReview(
-      parseConfig({ GITHUB_TOKEN: 'tok', GITHUB_REPOSITORY: 'owner/repo', PR_NUMBER: '42' }),
-    );
+    const config = asReview(parseConfig({ GITHUB_TOKEN: 'tok', GITHUB_REPOSITORY: 'owner/repo', PR_NUMBER: '42' }));
     expect(config.stickySummary).toBe(true);
     expect(config.incremental).toBe(false);
     expect(config.incrementalOverlapThreshold).toBe('');
+    expect(config.contentBasedDeduplication).toBe(true);
+    expect(config.contentSimilarityThreshold).toBe('');
     expect(config.batchSize).toBe('');
     expect(config.routeSeverityBelow).toBe('');
     expect(config.routeCategories).toBe('');
@@ -189,6 +179,8 @@ describe('parseConfig', () => {
         REVIEW_STICKY_SUMMARY: 'false',
         REVIEW_INCREMENTAL: 'true',
         REVIEW_INCREMENTAL_OVERLAP_THRESHOLD: '0.3',
+        REVIEW_CONTENT_BASED_DEDUPLICATION: 'false',
+        REVIEW_CONTENT_SIMILARITY_THRESHOLD: '0.9',
         REVIEW_COMMENT_BATCH_SIZE: '10',
         REVIEW_ROUTE_SEVERITY_BELOW: 'low',
         REVIEW_ROUTE_CATEGORIES: 'style, documentation',
@@ -197,6 +189,8 @@ describe('parseConfig', () => {
     expect(config.stickySummary).toBe(false);
     expect(config.incremental).toBe(true);
     expect(config.incrementalOverlapThreshold).toBe('0.3');
+    expect(config.contentBasedDeduplication).toBe(false);
+    expect(config.contentSimilarityThreshold).toBe('0.9');
     expect(config.batchSize).toBe('10');
     expect(config.routeSeverityBelow).toBe('low');
     expect(config.routeCategories).toBe('style, documentation');
@@ -256,7 +250,7 @@ describe('runReview', () => {
         await runReview(config, {
           octokitFactory: () => toOctokit(octokit),
           execFile: fakeOcrExec([inlineFindingJson('a.ts', 3)]),
-          info: () => { },
+          info: () => {},
           setOutput: (n, v) => outputs.push([n, v]),
         });
 
@@ -311,8 +305,8 @@ describe('runReview', () => {
 
         await runReview(config, {
           octokitFactory: () => toOctokit(octokit),
-          info: () => { },
-          setOutput: () => { },
+          info: () => {},
+          setOutput: () => {},
         });
 
         expect(captures.reviews).toHaveLength(1);
@@ -337,8 +331,8 @@ describe('runReview', () => {
     await expect(
       runReview(config, {
         octokitFactory: () => toOctokit(octokit),
-        info: () => { },
-        setOutput: () => { },
+        info: () => {},
+        setOutput: () => {},
       }),
     ).rejects.toThrow(/Review failed for PR #7:[\s\S]*ENOENT/);
   });
@@ -394,7 +388,7 @@ describe('runMention', () => {
         await runMention(config, {
           octokitFactory: () => toOctokit(octokit),
           execFile: fakeOcrExec([inlineFindingJson('a.ts', 3)]),
-          info: () => { },
+          info: () => {},
         });
 
         expect(captures.reviews).toHaveLength(1);
@@ -423,9 +417,17 @@ describe('runMention', () => {
         await runMention(config, {
           octokitFactory: () => toOctokit(octokit),
           execFile: fakeOcrExec([
-            { path: 'src/a.ts', content: 'x', suggestion: 'fixed line', severity: 'high', category: 'bug', side: 'RIGHT', start_line: 1 },
+            {
+              path: 'src/a.ts',
+              content: 'x',
+              suggestion: 'fixed line',
+              severity: 'high',
+              category: 'bug',
+              side: 'RIGHT',
+              start_line: 1,
+            },
           ]),
-          info: () => { },
+          info: () => {},
         });
 
         expect(captures.prCreates).toHaveLength(1);
@@ -460,7 +462,7 @@ describe('runMention', () => {
           OCR_LLM_MODEL: 'gpt-4o',
         },
         async () => {
-          await runMention(config, { octokitFactory: () => toOctokit(octokit), info: () => { } });
+          await runMention(config, { octokitFactory: () => toOctokit(octokit), info: () => {} });
         },
       );
 
@@ -496,4 +498,3 @@ describe('runMention', () => {
     expect(infoCalls.some((m) => /No mention found/.test(m))).toBe(true);
   });
 });
-

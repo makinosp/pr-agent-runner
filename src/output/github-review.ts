@@ -1,18 +1,15 @@
 import type { Octokit } from '@octokit/rest';
 import type { Finding } from '../schemas/finding.ts';
 import { resolveEndLine } from '../schemas/finding.ts';
-import {
-  buildReviewableRightLineMap,
-  splitFindingsForReview,
-  type InlineFinding,
-} from '../domain/reviewable-lines.ts';
+import { buildReviewableRightLineMap, splitFindingsForReview, type InlineFinding } from '../domain/reviewable-lines.ts';
 import {
   SUMMARY_MARKER,
   buildRoutePolicy,
   chunkArray,
   isBotComment,
-  overlapsHistory,
+  isDuplicateComment,
   resolveBatchSize,
+  resolveContentThreshold,
   resolveThreshold,
   shouldRoute,
   sortCommentsDeterministically,
@@ -95,7 +92,9 @@ const listExistingReviewComments = async (
     return [];
   }
   if (page > MAX_PAGES) {
-    console.info(`[incremental] listing review comments reached max page limit (${MAX_PAGES}); results may be incomplete.`);
+    console.info(
+      `[incremental] listing review comments reached max page limit (${MAX_PAGES}); results may be incomplete.`,
+    );
   }
   return all;
 };
@@ -195,13 +194,23 @@ export const postReview = async (
   const comments = remainingInline.map(toComment);
 
   // Incremental filtering: drop inline comments whose (path, line range)
-  // overlaps an existing bot review comment. History is never deleted.
+  // overlaps an existing bot review comment, or whose content matches one.
+  // History is never deleted.
   let skipped = 0;
   let toSend = comments;
   if (incremental && comments.length > 0) {
     const existing = await listExistingReviewComments(octokit, repo, prNumber);
     const history = existing.filter(isBotComment);
-    toSend = comments.filter((comment) => !overlapsHistory(comment, history, threshold));
+    const contentDedup = options.contentBasedDeduplication !== false;
+    const contentThreshold = resolveContentThreshold(options.contentSimilarityThreshold);
+    toSend = comments.filter(
+      (comment) =>
+        !isDuplicateComment(comment, history, {
+          lineThreshold: threshold,
+          content: contentDedup,
+          contentThreshold,
+        }),
+    );
     skipped = comments.length - toSend.length;
   }
 
@@ -284,5 +293,12 @@ export const postReview = async (
     if (typeof review.html_url === 'string') summaryUrl = review.html_url;
   }
 
-  return { total: findings.length, inline, skipped, routed, failed, ...(summaryUrl !== undefined ? { summaryUrl } : {}) };
+  return {
+    total: findings.length,
+    inline,
+    skipped,
+    routed,
+    failed,
+    ...(summaryUrl !== undefined ? { summaryUrl } : {}),
+  };
 };

@@ -34,6 +34,8 @@ const parseReviewOptions = (env: NodeJS.ProcessEnv): ReviewOptions => ({
   sticky: env.REVIEW_STICKY_SUMMARY !== 'false',
   incremental: env.REVIEW_INCREMENTAL === 'true',
   incrementalOverlapThreshold: env.REVIEW_INCREMENTAL_OVERLAP_THRESHOLD,
+  contentBasedDeduplication: env.REVIEW_CONTENT_BASED_DEDUPLICATION !== 'false',
+  contentSimilarityThreshold: env.REVIEW_CONTENT_SIMILARITY_THRESHOLD,
   batchSize: env.REVIEW_COMMENT_BATCH_SIZE,
   routeSeverityBelow: env.REVIEW_ROUTE_SEVERITY_BELOW ?? '',
   routeCategories: env.REVIEW_ROUTE_CATEGORIES ?? '',
@@ -78,6 +80,8 @@ export const parseConfig = (env: NodeJS.ProcessEnv): CliConfig => {
     stickySummary: options.sticky ?? true,
     incremental: options.incremental ?? false,
     incrementalOverlapThreshold: String(options.incrementalOverlapThreshold ?? ''),
+    contentBasedDeduplication: options.contentBasedDeduplication ?? true,
+    contentSimilarityThreshold: String(options.contentSimilarityThreshold ?? ''),
     batchSize: String(options.batchSize ?? ''),
     routeSeverityBelow: options.routeSeverityBelow ?? '',
     routeCategories: options.routeCategories ?? '',
@@ -128,20 +132,16 @@ export const runReview = async (config: ReviewCliConfig, deps: CliDeps = {}): Pr
       return;
     }
 
-    const stats = await postReview(
-      octokit,
-      { owner: config.owner, repo: config.repo },
-      config.prNumber,
-      findings,
-      {
-        sticky: config.stickySummary,
-        incremental: config.incremental,
-        incrementalOverlapThreshold: config.incrementalOverlapThreshold,
-        batchSize: config.batchSize,
-        routeSeverityBelow: config.routeSeverityBelow,
-        routeCategories: config.routeCategories,
-      },
-    );
+    const stats = await postReview(octokit, { owner: config.owner, repo: config.repo }, config.prNumber, findings, {
+      sticky: config.stickySummary,
+      incremental: config.incremental,
+      incrementalOverlapThreshold: config.incrementalOverlapThreshold,
+      contentBasedDeduplication: config.contentBasedDeduplication,
+      contentSimilarityThreshold: config.contentSimilarityThreshold,
+      batchSize: config.batchSize,
+      routeSeverityBelow: config.routeSeverityBelow,
+      routeCategories: config.routeCategories,
+    });
     setOutput('comments_total', String(stats.total));
     setOutput('comments_inline', String(stats.inline));
     setOutput('comments_skipped', String(stats.skipped));
