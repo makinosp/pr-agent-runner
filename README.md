@@ -8,7 +8,7 @@ AI-powered PR review automation built on [OpenCodeReview (OCR)](https://open-cod
   - `@bot fix` — auto-apply critical/high findings with suggestions via a new fix PR.
   - any other text — chat about the PR (answers using the PR diff as context).
 
-The whole flow is packaged as a **reusable composite action**, so any repository can opt in with a single `uses:` step.
+The whole flow is packaged as a **reusable workflow** (`workflow_call`), so any repository can opt in with a job-level `uses:` step.
 
 ## What makes this different
 
@@ -103,10 +103,9 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - uses: makinosp/pr-agent-runner/actions/review@v1
+      - uses: makinosp/pr-agent-runner/.github/workflows/pr-review.yml@v1
         with:
           app-client-id: ${{ vars.APP_ID }}
-          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
           ocr-llm-url: ${{ vars.OCR_LLM_URL }}
           ocr-llm-token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
           ocr-llm-model: ${{ vars.OCR_LLM_MODEL }}
@@ -116,7 +115,9 @@ jobs:
           # ocr-llm-protocol: ${{ vars.OCR_LLM_PROTOCOL }}
           # ocr-language: ${{ vars.OCR_LANGUAGE }}
           # compose-pr: ${{ vars.COMPOSE_PR }}
-          # bot-mention: ${{ vars.BOT_MENTION }}
+          # bot-mention: ${{ vars.BOT_MENTION || '@opencode-review' }}
+        secrets:
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
 ```
 
 ## Bot commands
@@ -134,7 +135,6 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 | Input                           | Required | Default                    | Description                                                                                                             |
 | ------------------------------- | -------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `app-client-id`                 | ✅       | —                          | GitHub App client ID                                                                                                    |
-| `app-private-key`               | ✅       | —                          | GitHub App private key                                                                                                  |
 | `ocr-llm-url`                   | ✅       | —                          | LLM endpoint URL                                                                                                        |
 | `ocr-llm-token`                 | ✅       | —                          | LLM API token                                                                                                           |
 | `ocr-llm-model`                 | ✅       | —                          | LLM model name                                                                                                          |

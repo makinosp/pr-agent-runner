@@ -13,10 +13,6 @@ on:
         description: "GitHub App client ID for token generation"
         required: true
         type: string
-      app-private-key:
-        description: "GitHub App private key for token generation"
-        required: true
-        type: string
       ocr-llm-url:
         description: "LLM endpoint URL used by OCR"
         required: true
