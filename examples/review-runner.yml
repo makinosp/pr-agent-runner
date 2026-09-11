@@ -8,14 +8,13 @@ on:
 
 jobs:
   review:
+    # Ignore non-PR comments, bot comments, and comments without the bot mention.
     if: >-
       github.event_name == 'pull_request' ||
       (github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
       github.event.comment.user.type != 'Bot' &&
       contains(github.event.comment.body, vars.BOT_MENTION || '@opencode-review'))
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
     concurrency:
       group: opencode-review-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: true
@@ -23,18 +22,18 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-    steps:
-      - uses: makinosp/pr-agent-runner/.github/workflows/pr-review.yml@v1
-        with:
-          app-client-id: ${{ vars.APP_ID }}
-          ocr-llm-url: ${{ vars.OCR_LLM_URL }}
-          ocr-llm-token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
-          ocr-llm-model: ${{ vars.OCR_LLM_MODEL }}
-          ocr-llm-max-tokens: ${{ vars.OCR_LLM_MAX_TOKENS }}
-          ocr-use-anthropic: ${{ vars.OCR_LLM_USE_ANTHROPIC }}
-          ocr-llm-protocol: ${{ vars.OCR_LLM_PROTOCOL }}
-          ocr-language: ${{ vars.OCR_LANGUAGE }}
-          compose-pr: ${{ vars.COMPOSE_PR }}
-          bot-mention: ${{ vars.BOT_MENTION || '@opencode-review' }}
-        secrets:
-          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+    uses: makinosp/pr-agent-runner/.github/workflows/pr-review.yml@v0.2.0
+    with:
+      app-client-id: ${{ vars.APP_ID }}
+      ocr-llm-url: ${{ vars.OCR_LLM_URL }}
+      ocr-llm-model: ${{ vars.OCR_LLM_MODEL }}
+      ocr-llm-max-tokens: ${{ vars.OCR_LLM_MAX_TOKENS }}
+      ocr-use-anthropic: ${{ vars.OCR_LLM_USE_ANTHROPIC }}
+      ocr-llm-protocol: ${{ vars.OCR_LLM_PROTOCOL }}
+      ocr-language: ${{ vars.OCR_LANGUAGE }}
+      compose-pr: ${{ vars.COMPOSE_PR }}
+      bot-mention: ${{ vars.BOT_MENTION || '@opencode-review' }}
+      runner-ref: v0.2.0
+    secrets:
+      app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      ocr-llm-token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}

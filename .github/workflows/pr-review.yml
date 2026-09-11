@@ -1,10 +1,9 @@
+# Runs OpenCodeReview (OCR) on a pull request and posts review comments.
+# Triggered on PR open or when a PR comment mentions the configured bot
+# (@bot review / @bot fix / free-form chat). Fully self-contained: checks out
+# the consumer repo and the runner CLI, generates a GitHub App token, runs OCR,
+# and posts results.
 name: "PR Agent Runner"
-description: >
-  Runs OpenCodeReview (OCR) on a pull request and posts review comments.
-  Triggered on PR open or when a PR comment mentions the configured bot
-  (@bot review / @bot fix / free-form chat). Fully self-contained: checks out
-  the consumer repo and the runner CLI, generates a GitHub App token, runs OCR,
-  and posts results.
 
 on:
   workflow_call:
@@ -15,10 +14,6 @@ on:
         type: string
       ocr-llm-url:
         description: "LLM endpoint URL used by OCR"
-        required: true
-        type: string
-      ocr-llm-token:
-        description: "LLM API token used by OCR"
         required: true
         type: string
       ocr-llm-model:
@@ -127,6 +122,10 @@ on:
         default: "makinosp/pr-agent-runner"
     secrets:
       app-private-key:
+        description: "GitHub App private key (PEM) used to mint an installation token"
+        required: true
+      ocr-llm-token:
+        description: "LLM API token used by OCR"
         required: true
     outputs:
       comments_total:
@@ -268,7 +267,7 @@ jobs:
           BASE_REF: ${{ steps.pr.outputs.base_ref }}
           HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
           OCR_LLM_URL: ${{ inputs.ocr-llm-url }}
-          OCR_LLM_TOKEN: ${{ inputs.ocr-llm-token }}
+          OCR_LLM_TOKEN: ${{ secrets.ocr-llm-token }}
           OCR_LLM_MODEL: ${{ inputs.ocr-llm-model }}
           OCR_LLM_MAX_TOKENS: ${{ inputs.ocr-llm-max-tokens }}
           OCR_USE_ANTHROPIC: ${{ inputs.ocr-use-anthropic }}
