@@ -1,6 +1,6 @@
 {
   "name": "pr-agent-runner",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "AI-powered PR review automation: runs OpenCodeReview (OCR) on PRs and handles @mention review/fix/chat commands, packaged as a reusable GitHub composite action.",
   "license": "BSD-3-Clause",

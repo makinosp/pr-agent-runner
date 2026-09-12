@@ -8,7 +8,7 @@ AI-powered PR review automation built on [OpenCodeReview (OCR)](https://open-cod
   - `@bot fix` — auto-apply critical/high findings with suggestions via a new fix PR.
   - any other text — chat about the PR (answers using the PR diff as context).
 
-The whole flow is packaged as a **reusable workflow** (`workflow_call`), so any repository can opt in with a job-level `uses:` step.
+The whole flow is packaged as a **reusable workflow** (`workflow_call`), so any repository can opt in with a job-level `uses:` call.
 
 ## What makes this different
 
@@ -93,8 +93,6 @@ jobs:
       github.event.issue.pull_request &&
       github.event.comment.user.type != 'Bot' &&
       contains(github.event.comment.body, vars.BOT_MENTION || '@opencode-review'))
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
     concurrency:
       group: opencode-review-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: true
@@ -102,22 +100,22 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-    steps:
-      - uses: makinosp/pr-agent-runner/.github/workflows/pr-review.yml@v1
-        with:
-          app-client-id: ${{ vars.APP_ID }}
-          ocr-llm-url: ${{ vars.OCR_LLM_URL }}
-          ocr-llm-token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
-          ocr-llm-model: ${{ vars.OCR_LLM_MODEL }}
-          # Optional inputs (defaults shown):
-          # ocr-llm-max-tokens: ${{ vars.OCR_LLM_MAX_TOKENS }}
-          # ocr-use-anthropic: ${{ vars.OCR_LLM_USE_ANTHROPIC }}
-          # ocr-llm-protocol: ${{ vars.OCR_LLM_PROTOCOL }}
-          # ocr-language: ${{ vars.OCR_LANGUAGE }}
-          # compose-pr: ${{ vars.COMPOSE_PR }}
-          # bot-mention: ${{ vars.BOT_MENTION || '@opencode-review' }}
-        secrets:
-          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+    uses: makinosp/pr-agent-runner/.github/workflows/pr-review.yml@v0.2.0
+    with:
+      app-client-id: ${{ vars.APP_ID }}
+      ocr-llm-url: ${{ vars.OCR_LLM_URL }}
+      ocr-llm-model: ${{ vars.OCR_LLM_MODEL }}
+      runner-ref: v0.2.0
+      # Optional inputs (defaults shown):
+      # ocr-llm-max-tokens: ${{ vars.OCR_LLM_MAX_TOKENS }}
+      # ocr-use-anthropic: ${{ vars.OCR_LLM_USE_ANTHROPIC }}
+      # ocr-llm-protocol: ${{ vars.OCR_LLM_PROTOCOL }}
+      # ocr-language: ${{ vars.OCR_LANGUAGE || 'English' }}
+      # compose-pr: ${{ vars.COMPOSE_PR }}
+      # bot-mention: ${{ vars.BOT_MENTION || '@opencode-review' }}
+    secrets:
+      app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      ocr-llm-token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}
 ```
 
 ## Bot commands
@@ -136,7 +134,6 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 | ------------------------------- | -------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `app-client-id`                 | ✅       | —                          | GitHub App client ID                                                                                                    |
 | `ocr-llm-url`                   | ✅       | —                          | LLM endpoint URL                                                                                                        |
-| `ocr-llm-token`                 | ✅       | —                          | LLM API token                                                                                                           |
 | `ocr-llm-model`                 | ✅       | —                          | LLM model name                                                                                                          |
 | `ocr-llm-max-tokens`            | —        | _(unset)_                  | LLM max tokens                                                                                                          |
 | `ocr-use-anthropic`             | —        | _(unset)_                  | `"true"` for Anthropic protocol                                                                                         |
@@ -158,6 +155,16 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 | `node-version`                  | —        | `24`                       | Node.js version (**must be ≥ 24** — the CLI runs TS directly via type stripping)                                        |
 | `pnpm-version`                  | —        | `11`                       | pnpm version                                                                                                            |
 | `fetch-depth`                   | —        | `0`                        | Consumer repo checkout depth                                                                                            |
+| `timeout-minutes`               | —        | `30`                       | Maximum minutes the review job may run before it is cancelled                                                           |
+
+## Action secrets
+
+| Secret            | Required | Description                                    |
+| ----------------- | -------- | ---------------------------------------------- |
+| `app-private-key` | ✅       | GitHub App private key (PEM) for token minting |
+| `ocr-llm-token`   | ✅       | LLM API token used by OCR                      |
+
+Secrets are passed through the calling job's `secrets:` block (for example `ocr-llm-token: ${{ secrets.OCR_LLM_AUTH_TOKEN }}`). The `with:` block cannot reference the `secrets` context, so tokens must never be passed as inputs.
 
 ## Review posting behavior
 

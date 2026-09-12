@@ -29,6 +29,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Lint workflow files
+        shell: bash
+        run: |
+          bash <(curl -sSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
+          ./actionlint -color .github/workflows/*.yml examples/*.yml
+
       - name: Test
         run: pnpm test
 
