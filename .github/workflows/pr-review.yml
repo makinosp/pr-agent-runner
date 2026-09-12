@@ -35,6 +35,11 @@ on:
         required: false
         type: string
         default: "0"
+      timeout-minutes:
+        description: "Maximum number of minutes the review job may run before it is cancelled"
+        required: false
+        type: number
+        default: 30
       ocr-version:
         description: "OpenCodeReview CLI version to install"
         required: false
@@ -150,6 +155,7 @@ on:
 jobs:
   review:
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
       pull-requests: write
@@ -229,19 +235,23 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "issue_comment" ]; then
             PR_PATH=$(echo "${PR_URL}" | sed -E 's#https://api.github.com/repos/([^/]+)/([^/]+)/pulls/([0-9]+)#\1 \2 \3#')
-            set -- ${PR_PATH}
-            echo "owner=${1}" >> "${GITHUB_OUTPUT}"
-            echo "repo=${2}" >> "${GITHUB_OUTPUT}"
-            echo "number=${3}" >> "${GITHUB_OUTPUT}"
-            PR_DETAILS=$(gh api repos/${1}/${2}/pulls/${3} --jq '{base_ref: .base.ref, head_sha: .head.sha}')
+            read -r owner repo number <<< "${PR_PATH}"
+            {
+              echo "owner=${owner}"
+              echo "repo=${repo}"
+              echo "number=${number}"
+            } >> "${GITHUB_OUTPUT}"
+            PR_DETAILS=$(gh api "repos/${owner}/${repo}/pulls/${number}" --jq '{base_ref: .base.ref, head_sha: .head.sha}')
             echo "base_ref=$(echo "${PR_DETAILS}" | jq -r '.base_ref')" >> "${GITHUB_OUTPUT}"
             echo "head_sha=$(echo "${PR_DETAILS}" | jq -r '.head_sha')" >> "${GITHUB_OUTPUT}"
           else
-            echo "owner=${{ github.event.repository.owner.login }}" >> "${GITHUB_OUTPUT}"
-            echo "repo=${{ github.event.repository.name }}" >> "${GITHUB_OUTPUT}"
-            echo "number=${{ github.event.pull_request.number }}" >> "${GITHUB_OUTPUT}"
-            echo "base_ref=${{ github.event.pull_request.base.ref }}" >> "${GITHUB_OUTPUT}"
-            echo "head_sha=${{ github.event.pull_request.head.sha }}" >> "${GITHUB_OUTPUT}"
+            {
+              echo "owner=${{ github.event.repository.owner.login }}"
+              echo "repo=${{ github.event.repository.name }}"
+              echo "number=${{ github.event.pull_request.number }}"
+              echo "base_ref=${{ github.event.pull_request.base.ref }}"
+              echo "head_sha=${{ github.event.pull_request.head.sha }}"
+            } >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Checkout PR head SHA

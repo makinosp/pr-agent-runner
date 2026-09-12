@@ -172,7 +172,7 @@ export const runOcrReview = async (
   const { baseRef, headSha } = refs;
 
   await execFile('ocr', ['llm', 'test'], { env: { ...process.env, ...env } });
-  await execFile('ocr', ['config', 'set', 'language', process.env.OCR_LANGUAGE ?? 'English'], {
+  await execFile('ocr', ['config', 'set', 'language', process.env.OCR_LANGUAGE || 'English'], {
     env: { ...process.env, ...env },
   });
   await execFile('git', ['fetch', 'origin', baseRef]);

@@ -110,7 +110,7 @@ jobs:
       # ocr-llm-max-tokens: ${{ vars.OCR_LLM_MAX_TOKENS }}
       # ocr-use-anthropic: ${{ vars.OCR_LLM_USE_ANTHROPIC }}
       # ocr-llm-protocol: ${{ vars.OCR_LLM_PROTOCOL }}
-      # ocr-language: ${{ vars.OCR_LANGUAGE }}
+      # ocr-language: ${{ vars.OCR_LANGUAGE || 'English' }}
       # compose-pr: ${{ vars.COMPOSE_PR }}
       # bot-mention: ${{ vars.BOT_MENTION || '@opencode-review' }}
     secrets:
@@ -155,6 +155,7 @@ With the default mention `@opencode-review` (customize via the `bot-mention` inp
 | `node-version`                  | —        | `24`                       | Node.js version (**must be ≥ 24** — the CLI runs TS directly via type stripping)                                        |
 | `pnpm-version`                  | —        | `11`                       | pnpm version                                                                                                            |
 | `fetch-depth`                   | —        | `0`                        | Consumer repo checkout depth                                                                                            |
+| `timeout-minutes`               | —        | `30`                       | Maximum minutes the review job may run before it is cancelled                                                           |
 
 ## Action secrets
 

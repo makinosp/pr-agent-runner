@@ -30,7 +30,7 @@ jobs:
       ocr-llm-max-tokens: ${{ vars.OCR_LLM_MAX_TOKENS }}
       ocr-use-anthropic: ${{ vars.OCR_LLM_USE_ANTHROPIC }}
       ocr-llm-protocol: ${{ vars.OCR_LLM_PROTOCOL }}
-      ocr-language: ${{ vars.OCR_LANGUAGE }}
+      ocr-language: ${{ vars.OCR_LANGUAGE || 'English' }}
       compose-pr: ${{ vars.COMPOSE_PR }}
       bot-mention: ${{ vars.BOT_MENTION || '@opencode-review' }}
       runner-ref: v0.2.0

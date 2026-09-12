@@ -366,6 +366,24 @@ describe('runOcrReview', () => {
     ]);
     expect(written).toEqual([['result.json', '{"findings":[]}']]);
   });
+
+  test('falls back to English when OCR_LANGUAGE is empty', async () => {
+    const execCalls: Array<[string, string[]]> = [];
+    const deps: CliDeps = {
+      execFile: async (file, args) => {
+        execCalls.push([file, [...args]]);
+        if (file === 'git' && args[0] === 'merge-base') return { stdout: 'base123\n', stderr: '' };
+        if (file === 'ocr' && args[0] === 'review') return { stdout: '{"findings":[]}', stderr: '' };
+        return { stdout: '', stderr: '' };
+      },
+      writeFile: async () => { },
+    };
+
+    await withEnv({ OCR_LANGUAGE: '' }, () => runOcrReview({ baseRef: 'main', headSha: 'abc123' }, deps));
+
+    const languageCalls = execCalls.filter(([file, args]) => file === 'ocr' && args[0] === 'config');
+    expect(languageCalls).toEqual([['ocr', ['config', 'set', 'language', 'English']]]);
+  });
 });
 
 describe('runMention', () => {
