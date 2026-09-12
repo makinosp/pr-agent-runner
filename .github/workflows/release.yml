@@ -43,15 +43,15 @@ jobs:
           VERSION="${{ inputs.version }}"
           MAJOR=$(echo "$VERSION" | cut -d. -f1)
 
-          git tag "v${VERSION}"
-          git push origin "v${VERSION}"
+          git tag "${VERSION}"
+          git push origin "${VERSION}"
 
           # Move the major version tag (e.g. v1) to point to this release
-          git tag -d "v${MAJOR}" || true
-          git tag "v${MAJOR}" "v${VERSION}"
-          git push origin "v${MAJOR}" || true
+          git tag -d "${MAJOR}" || true
+          git tag "${MAJOR}" "${VERSION}"
+          git push origin "${MAJOR}" || true
 
-          gh release create "v${VERSION}" \
-            --title "v${VERSION}" \
+          gh release create "${VERSION}" \
+            --title "${VERSION}" \
             --generate-notes \
             --latest
